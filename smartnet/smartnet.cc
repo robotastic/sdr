@@ -41,15 +41,35 @@
 #include <osmosdr_source_c.h>
 #include <osmosdr_sink_c.h>
 #include <gr_sig_source_f.h>
+#include <gr_sig_source_c.h>
 #include <gr_audio_sink.h>
 #include <boost/program_options.hpp>
+#include <boost/math/constants/constants.hpp>
+#include <iostream>
+#include <gr_multiply_cc.h>
+#include <filter/freq_xlating_fir_filter_ccf.h>
+#include <digital_fll_band_edge_cc.h>
+#include <digital_clock_recovery_mm_ff.h>
+#include <filter/firdes.h>
+#include <gr_pll_freqdet_cf.h>
+#include <digital_binary_slicer_fb.h>
+#include <gr_correlate_access_code_tag_bb.h>
+#include <gr_msg_queue.h>
+#include <gr_message.h>
+#include <gr_file_sink.h>
+#include <gr_complex.h>
+#include <smartnet_crc.h>
+#include <smartnet_deinterleave.h>
+
 
 namespace po = boost::program_options;
+
+using namespace std;
 
 int main(int argc, char **argv)
 {
 std::string device_addr;
-    double center_freq, samp_rate;
+    double center_freq, samp_rate, chan_freq, error;
 	int if_gain, bb_gain, rf_gain;
     //setup the program options
     po::options_description desc("Allowed options");
@@ -57,7 +77,9 @@ std::string device_addr;
         ("help", "help message")
         ("arg", po::value<std::string>(&device_addr)->default_value(""), "the device arguments in string format")
         ("rate", po::value<double>(&samp_rate)->default_value(1e6), "the sample rate in samples per second")
-        ("freq", po::value<double>(&center_freq)->default_value(10e6), "the center frequency in Hz")
+        ("center", po::value<double>(&center_freq)->default_value(10e6), "the center frequency in Hz")
+	("error", po::value<double>(&error)->default_value(0), "the Error in frequency in Hz")
+	("freq", po::value<double>(&chan_freq)->default_value(10e6), "the frequency in Hz of the trunking channel")
         ("rfgain", po::value<int>(&rf_gain)->default_value(14), "RF Gain")
 	("bbgain", po::value<int>(&bb_gain)->default_value(25), "BB Gain")
 	("ifgain", po::value<int>(&if_gain)->default_value(25), "IF Gain")
@@ -80,38 +102,100 @@ std::string device_addr;
 
 
 
-  int rate = 48000;		// Audio card sample rate
-  float ampl = 0.1;		// Don't exceed 0.5 or clipping will occur
-
-  // Construct a top block that will contain flowgraph blocks.  Alternatively,
-  // one may create a derived class from gr_top_block and hold instantiated blocks
-  // as member data for later manipulation.
+ 
   gr_top_block_sptr tb = gr_make_top_block("smartnet");
 
 	
 	osmosdr_source_c_sptr src = osmosdr_make_source_c();
+	cout << "Setting sample rate to: " << samp_rate << endl;
+	src->set_sample_rate(samp_rate);
+	cout << "Tunning to " << center_freq - error << "hz" << endl;
+	src->set_center_freq(center_freq - error,0);
 
-  // Construct a real-valued signal source for each tone, at given sample rate
-  gr_sig_source_f_sptr src0 = gr_make_sig_source_f(rate, GR_SIN_WAVE, 350, ampl);
-  gr_sig_source_f_sptr src1 = gr_make_sig_source_f(rate, GR_SIN_WAVE, 440, ampl);
+	cout << "Setting RF gain to " << rf_gain << endl;
+	cout << "Setting BB gain to " << bb_gain << endl;
+	cout << "Setting IF gain to " << if_gain << endl;
 
-  // Construct an audio sink to accept audio tones
-  audio_sink::sptr sink = audio_make_sink(rate);
+	src->set_gain(rf_gain);
+	src->set_if_gain(if_gain);
+	src->set_bb_gain(bb_gain);
 
-  // Connect output #0 of src0 to input #0 of sink (left channel)
-  tb->connect(src0, 0, sink, 0);
 
-  // Connect output #0 of src1 to input #1 of sink (right channel)
-  tb->connect(src1, 0, sink, 1);
 
-  // Tell GNU Radio runtime to start flowgraph threads; the foreground thread
-  // will block until either flowgraph exits (this example doesn't) or the
-  // application receives SIGINT (e.g., user hits CTRL-C).
-  //
-  // Real applications may use tb->start() which returns, allowing the foreground
-  // thread to proceed, then later use tb->stop(), followed by tb->wait(), to cleanup
-  // GNU Radio before exiting.
-  tb->run();
+
+	float samples_per_second = samp_rate;
+	float syms_per_sec = 3600;
+	float gain_mu = 0.01;
+	float mu=0.5;
+	float omega_relative_limit = 0.3;
+	float offset = center_freq - chan_freq;
+	float clockrec_oversample = 3;
+	int decim = int(samples_per_second / (syms_per_sec * clockrec_oversample));
+	float sps = samples_per_second/decim/syms_per_sec; 
+	const double pi = boost::math::constants::pi<double>();
+	
+	cout << "Control channel offset: " << offset << endl;
+	cout << "Decim: " << decim << endl;
+	cout << "Samples per symbol: " << sps << endl;
+
+	gr_msg_queue_sptr queue = gr_make_msg_queue();
+	gr_file_sink_sptr tester = gr_make_file_sink(sizeof(gr_complex), "test.dat");	
+
+
+	gr_sig_source_c_sptr offset_sig = gr_make_sig_source_c(samp_rate, GR_SIN_WAVE, offset, 1.0, 0.0);
+
+	gr_multiply_cc_sptr mixer = gr_make_multiply_cc();
+	
+	
+	gr::filter::freq_xlating_fir_filter_ccf::sptr downsample = gr::filter::freq_xlating_fir_filter_ccf::make(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN), 0,samples_per_second);
+
+	gr_pll_freqdet_cf_sptr pll_demod = gr_make_pll_freqdet_cf(2.0 / clockrec_oversample, 										 2*pi/clockrec_oversample, 
+										-2*pi/clockrec_oversample);
+
+	digital_fll_band_edge_cc_sptr carriertrack = digital_make_fll_band_edge_cc(sps, 0.6, 64, 1.0);
+
+	digital_clock_recovery_mm_ff_sptr softbits = digital_make_clock_recovery_mm_ff(sps, 0.25 * gain_mu * gain_mu, mu, gain_mu, omega_relative_limit); 
+
+
+	digital_binary_slicer_fb_sptr slicer =  digital_make_binary_slicer_fb();
+gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access_code_tag_bb("10101100",0,"smartnet_preamble");
+
+
+	smartnet_deinterleave_sptr deinterleave = smartnet_make_deinterleave();
+
+	smartnet_crc_sptr crc = smartnet_make_crc(queue);
+
+	tb->connect(offset_sig, 0, mixer, 0);
+	tb->connect(src, 0, mixer, 1);
+	tb->connect(mixer, 0, downsample, 0);
+	tb->connect(downsample, 0, carriertrack, 0);
+	//tb->connect(downsample, 0, tester, 0);
+	tb->connect(carriertrack, 0, pll_demod, 0);
+	tb->connect(pll_demod, 0, softbits, 0);
+	tb->connect(softbits, 0, slicer, 0);
+	tb->connect(slicer, 0, start_correlator, 0);
+	tb->connect(start_correlator, 0, deinterleave, 0);
+	tb->connect(deinterleave, 0, crc, 0);
+	
+	tb->start();
+
+	while (1) {
+		if (!queue->empty_p())
+		{
+			std::string sentence;
+			gr_message_sptr msg;
+			msg = queue->delete_head();
+			sentence = msg->to_string();	
+			cout << sentence << endl;
+			
+		} else {
+			
+			boost::this_thread::sleep(boost::posix_time::milliseconds(1.0/10));
+		}
+
+	}
+	
+  
 
   // Exit normally.
   return 0;

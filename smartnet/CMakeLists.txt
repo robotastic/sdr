@@ -118,8 +118,8 @@ link_directories(
 )
 
 
-add_executable(smartnet smartnet.cc)
-target_link_libraries(smartnet gnuradio-core gnuradio-audio gnuradio-osmosdr ${Boost_LIBRARIES} )
+add_executable(smartnet smartnet.cc smartnet_crc.cc smartnet_deinterleave.cc)
+target_link_libraries(smartnet gnuradio-core gnuradio-audio gnuradio-osmosdr gnuradio-filter gnuradio-digital ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} )
 
 INSTALL(TARGETS
     smartnet
