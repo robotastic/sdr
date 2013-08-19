@@ -37,15 +37,28 @@
  */
 
 // Include header files for each block used in flowgraph
+
+#include <iostream>
+#include <string> 
+#include <stdio.h>
+#include <stdlib.h>
+
+
 #include <gr_top_block.h>
 #include <osmosdr_source_c.h>
 #include <osmosdr_sink_c.h>
 #include <gr_sig_source_f.h>
 #include <gr_sig_source_c.h>
 #include <gr_audio_sink.h>
+
+
 #include <boost/program_options.hpp>
 #include <boost/math/constants/constants.hpp>
-#include <iostream>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+
+
+
 #include <gr_multiply_cc.h>
 #include <filter/freq_xlating_fir_filter_ccf.h>
 #include <digital_fll_band_edge_cc.h>
@@ -58,13 +71,58 @@
 #include <gr_message.h>
 #include <gr_file_sink.h>
 #include <gr_complex.h>
+#include <gr_fir_filter_ccf.h>
 #include <smartnet_crc.h>
 #include <smartnet_deinterleave.h>
+
+
 
 
 namespace po = boost::program_options;
 
 using namespace std;
+
+int lastcmd = 0;
+
+
+
+float getfreq(int cmd) {
+	float freq;
+		if (cmd < 0x1b8) {	
+			freq = float(cmd * 0.025 + 851.0125);
+		} else if (cmd < 0x230) {
+			freq = float(cmd * 0.025 + 851.0125 - 10.9875);
+			} else {
+			freq = 0;
+			}
+	
+
+	return freq;
+}
+
+float parsefreq(string s) {
+	float retfreq = 0;
+	std::vector<std::string> x;
+	boost::split(x, s, boost::is_any_of(","), boost::token_compress_on);
+	//vector<string> x = split(s, ","); 
+	int address = atoi( x[0].c_str() ) & 0xFFF0;
+	int groupflag = atoi( x[1].c_str() );
+	int command = atoi( x[2].c_str() );
+	
+	
+            
+        if ((command < 0x2d0) && ( lastcmd == 0x308)) {
+                retfreq = getfreq(command);
+	}
+        
+	cout << "Command: " << command << " Address: " << address << " GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
+
+	lastcmd = command;
+       
+
+	return retfreq;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -146,8 +204,8 @@ std::string device_addr;
 
 	gr_multiply_cc_sptr mixer = gr_make_multiply_cc();
 	
-	
-	gr::filter::freq_xlating_fir_filter_ccf::sptr downsample = gr::filter::freq_xlating_fir_filter_ccf::make(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN), 0,samples_per_second);
+	gr_fir_filter_ccf_sptr downsample = gr_make_fir_filter_ccf(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN));
+	//gr::filter::freq_xlating_fir_filter_ccf::sptr downsample = gr::filter::freq_xlating_fir_filter_ccf::make(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN), 0,samples_per_second);
 
 	gr_pll_freqdet_cf_sptr pll_demod = gr_make_pll_freqdet_cf(2.0 / clockrec_oversample, 										 2*pi/clockrec_oversample, 
 										-2*pi/clockrec_oversample);
@@ -168,8 +226,8 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(offset_sig, 0, mixer, 0);
 	tb->connect(src, 0, mixer, 1);
 	tb->connect(mixer, 0, downsample, 0);
+	//tb->connect(src, 0, downsample, 0);
 	tb->connect(downsample, 0, carriertrack, 0);
-	//tb->connect(downsample, 0, tester, 0);
 	tb->connect(carriertrack, 0, pll_demod, 0);
 	tb->connect(pll_demod, 0, softbits, 0);
 	tb->connect(softbits, 0, slicer, 0);
@@ -185,8 +243,8 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 			std::string sentence;
 			gr_message_sptr msg;
 			msg = queue->delete_head();
-			sentence = msg->to_string();	
-			cout << sentence << endl;
+			sentence = msg->to_string();
+			parsefreq(sentence);	
 			
 		} else {
 			

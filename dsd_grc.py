@@ -2,7 +2,7 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Dsd Grc
-# Generated: Tue Aug 13 20:57:53 2013
+# Generated: Sun Aug 18 21:55:32 2013
 ##################################################
 
 from baz import op25
@@ -42,7 +42,7 @@ class dsd_grc(grc_wxgui.top_block_gui):
 		self._config_freq_config = ConfigParser.ConfigParser()
 		self._config_freq_config.read(".grc_op25")
 		try: config_freq = self._config_freq_config.getfloat("main", "freq")
-		except: config_freq = 434075000
+		except: config_freq = 489900000
 		self.config_freq = config_freq
 		self.freq = freq = config_freq
 		self._config_xlate_offset_config = ConfigParser.ConfigParser()
@@ -390,19 +390,19 @@ class dsd_grc(grc_wxgui.top_block_gui):
 
 	def set_freq(self, freq):
 		self.freq = freq
+		self.set_variable_static_text_0(self.freq+self.xlate_offset+self.xlate_offset_fine+self.auto_tune_offset)
+		self.set_xlate_offset(self.freq-self.click_freq)
+		self.set_click_freq(self.freq-self.config_xlate_offset)
+		self.wxgui_waterfallsink2_0.set_baseband_freq(self.freq)
+		self.wxgui_fftsink2_0.set_baseband_freq(self.freq)
 		self._config_freq_config = ConfigParser.ConfigParser()
 		self._config_freq_config.read(".grc_op25")
 		if not self._config_freq_config.has_section("main"):
 			self._config_freq_config.add_section("main")
 		self._config_freq_config.set("main", "freq", str(self.freq))
 		self._config_freq_config.write(open(".grc_op25", 'w'))
-		self.set_variable_static_text_0(self.freq+self.xlate_offset+self.xlate_offset_fine+self.auto_tune_offset)
-		self._freq_text_box.set_value(self.freq)
-		self.set_xlate_offset(self.freq-self.click_freq)
-		self.set_click_freq(self.freq-self.config_xlate_offset)
-		self.wxgui_waterfallsink2_0.set_baseband_freq(self.freq)
-		self.wxgui_fftsink2_0.set_baseband_freq(self.freq)
 		self.osmosdr_source_c_0.set_center_freq(self.freq, 0)
+		self._freq_text_box.set_value(self.freq)
 
 	def get_config_xlate_offset(self):
 		return self.config_xlate_offset
