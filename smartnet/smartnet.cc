@@ -43,37 +43,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "logging_receiver_dsd.h"
+#include <smartnet_crc.h>
+#include <smartnet_deinterleave.h>
 
-#include <gr_top_block.h>
 #include <osmosdr_source_c.h>
 #include <osmosdr_sink_c.h>
-#include <gr_sig_source_f.h>
-#include <gr_sig_source_c.h>
-#include <gr_audio_sink.h>
-
 
 #include <boost/program_options.hpp>
 #include <boost/math/constants/constants.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-
-
-#include <gr_multiply_cc.h>
 #include <filter/freq_xlating_fir_filter_ccf.h>
+#include <filter/firdes.h>
+
 #include <digital_fll_band_edge_cc.h>
 #include <digital_clock_recovery_mm_ff.h>
-#include <filter/firdes.h>
-#include <gr_pll_freqdet_cf.h>
 #include <digital_binary_slicer_fb.h>
+
+#include <gr_firdes.h>
+#include <gr_fir_filter_ccf.h>
+
+#include <gr_pll_freqdet_cf.h>
+#include <gr_sig_source_f.h>
+#include <gr_sig_source_c.h>
+#include <gr_audio_sink.h>
 #include <gr_correlate_access_code_tag_bb.h>
 #include <gr_msg_queue.h>
 #include <gr_message.h>
 #include <gr_file_sink.h>
 #include <gr_complex.h>
 #include <gr_fir_filter_ccf.h>
-#include <smartnet_crc.h>
-#include <smartnet_deinterleave.h>
+#include <gr_top_block.h>
+#include <gr_multiply_cc.h>
+
+
 
 
 
@@ -96,7 +101,6 @@ float getfreq(int cmd) {
 			freq = 0;
 			}
 	
-
 	return freq;
 }
 
@@ -204,7 +208,7 @@ std::string device_addr;
 
 	gr_multiply_cc_sptr mixer = gr_make_multiply_cc();
 	
-	gr_fir_filter_ccf_sptr downsample = gr_make_fir_filter_ccf(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN));
+	gr_fir_filter_ccf_sptr downsample = gr_make_fir_filter_ccf(decim, gr_firdes::low_pass(1, samples_per_second, 10000, 1000, gr_firdes::WIN_HANN));
 	//gr::filter::freq_xlating_fir_filter_ccf::sptr downsample = gr::filter::freq_xlating_fir_filter_ccf::make(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN), 0,samples_per_second);
 
 	gr_pll_freqdet_cf_sptr pll_demod = gr_make_pll_freqdet_cf(2.0 / clockrec_oversample, 										 2*pi/clockrec_oversample, 
@@ -223,6 +227,9 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 
 	smartnet_crc_sptr crc = smartnet_make_crc(queue);
 
+  	audio_sink::sptr sink = audio_make_sink(8000);
+log_dsd_sptr log_dsd = make_log_dsd( chan_freq, center_freq) ;
+
 	tb->connect(offset_sig, 0, mixer, 0);
 	tb->connect(src, 0, mixer, 1);
 	tb->connect(mixer, 0, downsample, 0);
@@ -234,6 +241,9 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(slicer, 0, start_correlator, 0);
 	tb->connect(start_correlator, 0, deinterleave, 0);
 	tb->connect(deinterleave, 0, crc, 0);
+
+	//tb->connect(src, 0, log_dsd, 0);
+	//tb->connect(log_dsd, 0, sink,0);
 	
 	tb->start();
 

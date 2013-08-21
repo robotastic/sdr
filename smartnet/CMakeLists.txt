@@ -39,6 +39,7 @@ find_package(LibRTLSDR)
 find_package(LibMiriSDR)
 find_package(LibHackRF)
 find_package(LibbladeRF)
+find_package(LibDSD)
 
 if(NOT GRUEL_FOUND)
     message(FATAL_ERROR "Gruel required to build " ${CMAKE_PROJECT_NAME})
@@ -108,6 +109,7 @@ include_directories(
     ${GRUEL_INCLUDE_DIRS}
     ${GNURADIO_CORE_INCLUDE_DIRS}
     ${LIBOSMOSDR_INCLUDE_DIR}
+    ${LIBDSD_INCLUDE_DIR}
 )
 
 link_directories(
@@ -115,11 +117,12 @@ link_directories(
     ${GRUEL_LIBRARY_DIRS}
     ${GNURADIO_CORE_LIBRARY_DIRS}
     ${LIBOSMOSDR_LIBRARIES}
+    ${LIBDSD_LIBRARIES}
 )
 
 
-add_executable(smartnet smartnet.cc smartnet_crc.cc smartnet_deinterleave.cc)
-target_link_libraries(smartnet gnuradio-core gnuradio-audio gnuradio-osmosdr gnuradio-filter gnuradio-digital ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} )
+add_executable(smartnet smartnet.cc smartnet_crc.cc smartnet_deinterleave.cc logging_receiver_dsd.cc)
+target_link_libraries(smartnet gnuradio-core gnuradio-audio gnuradio-osmosdr gnuradio-filter gnuradio-digital ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} ${LIBDSD_LIBRARIES} )
 
 INSTALL(TARGETS
     smartnet
