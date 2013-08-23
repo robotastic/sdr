@@ -228,7 +228,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	smartnet_crc_sptr crc = smartnet_make_crc(queue);
 
   	audio_sink::sptr sink = audio_make_sink(44100);
-log_dsd_sptr log_dsd = make_log_dsd( 856.98750, center_freq) ;
+log_dsd_sptr log_dsd = make_log_dsd( chan_freq, center_freq) ;
 /*
 	tb->connect(offset_sig, 0, mixer, 0);
 	tb->connect(src, 0, mixer, 1);
