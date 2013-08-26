@@ -121,11 +121,11 @@ link_directories(
 )
 
 
-add_executable(smartnet smartnet.cc smartnet_crc.cc smartnet_deinterleave.cc logging_receiver_dsd.cc)
-target_link_libraries(smartnet gnuradio-core gnuradio-audio gnuradio-osmosdr gnuradio-filter gnuradio-digital gnuradio-analog ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} ${LIBDSD_LIBRARIES} )
+add_executable(dsd_rx dsd_rx.cc)
+target_link_libraries(gnuradio-core gnuradio-audio gnuradio-osmosdr gnuradio-filter gnuradio-digital gnuradio-analog ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} ${LIBDSD_LIBRARIES} )
 
 INSTALL(TARGETS
-    smartnet
+    dsd_rx
     DESTINATION ${GR_PKG_AUDIO_EXAMPLES_DIR}
     COMPONENT "audio_examples"
 )
