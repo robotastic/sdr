@@ -2,10 +2,9 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Dsd Grc
-# Generated: Sun Aug 18 21:55:32 2013
+# Generated: Sun Aug 25 21:14:27 2013
 ##################################################
 
-from baz import op25
 from gnuradio import analog
 from gnuradio import audio
 from gnuradio import blks2
@@ -68,8 +67,7 @@ class dsd_grc(grc_wxgui.top_block_gui):
 		self.pre_channel_rate = pre_channel_rate = samp_rate/decim
 		self.gain = gain = 25
 		self.fine_click_freq = fine_click_freq = 0
-		self.channel_rate = channel_rate = op25.SYMBOL_RATE*samp_per_sym
-		self.auto_tune_offset_freq = auto_tune_offset_freq = auto_tune_offset*op25.SYMBOL_DEVIATION
+		self.channel_rate = channel_rate = 4800*samp_per_sym
 		self.audio_mul = audio_mul = 0
 
 		##################################################
@@ -169,14 +167,6 @@ class dsd_grc(grc_wxgui.top_block_gui):
 			converter=forms.float_converter(),
 		)
 		self.Add(self._freq_text_box)
-		self._auto_tune_offset_freq_static_text = forms.static_text(
-			parent=self.GetWin(),
-			value=self.auto_tune_offset_freq,
-			callback=self.set_auto_tune_offset_freq,
-			label="Auto tune",
-			converter=forms.float_converter(),
-		)
-		self.Add(self._auto_tune_offset_freq_static_text)
 		_audio_mul_sizer = wx.BoxSizer(wx.VERTICAL)
 		self._audio_mul_text_box = forms.text_box(
 			parent=self.GetWin(),
@@ -242,20 +232,6 @@ class dsd_grc(grc_wxgui.top_block_gui):
 			y_axis_label="Counts",
 		)
 		self.nb.GetPage(4).Add(self.wxgui_scopesink2_1.win)
-		self.wxgui_scopesink2_0 = scopesink2.scope_sink_f(
-			self.nb.GetPage(5).GetWin(),
-			title="Scope Plot",
-			sample_rate=op25.SYMBOL_RATE,
-			v_scale=1,
-			v_offset=0,
-			t_scale=0.05,
-			ac_couple=False,
-			xy_mode=False,
-			num_inputs=1,
-			trig_mode=gr.gr_TRIG_MODE_AUTO,
-			y_axis_label="Counts",
-		)
-		self.nb.GetPage(5).Add(self.wxgui_scopesink2_0.win)
 		self.wxgui_fftsink2_0_0 = fftsink2.fft_sink_c(
 			self.nb.GetPage(2).GetWin(),
 			baseband_freq=fine_click_freq,
@@ -334,15 +310,15 @@ class dsd_grc(grc_wxgui.top_block_gui):
 		self.osmosdr_source_c_0.set_dc_offset_mode(0, 0)
 		self.osmosdr_source_c_0.set_iq_balance_mode(0, 0)
 		self.osmosdr_source_c_0.set_gain_mode(0, 0)
-		self.osmosdr_source_c_0.set_gain(10, 0)
+		self.osmosdr_source_c_0.set_gain(14, 0)
 		self.osmosdr_source_c_0.set_if_gain(gain, 0)
 		self.osmosdr_source_c_0.set_bb_gain(gain, 0)
 		self.osmosdr_source_c_0.set_antenna("", 0)
 		self.osmosdr_source_c_0.set_bandwidth(0, 0)
 		  
-		self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(decim, (firdes.low_pass(1, samp_rate, xlate_bandwidth/2, 6000)), xlate_offset+xlate_offset_fine-fine_click_freq-auto_tune_offset_freq, samp_rate)
+		self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(decim, (firdes.low_pass(1, samp_rate, xlate_bandwidth/2, 6000)), xlate_offset+xlate_offset_fine-fine_click_freq, samp_rate)
 		self.fir_filter_xxx_0 = filter.fir_filter_fff(1, ((1.0/samp_per_sym,)*samp_per_sym))
-		self.dsd_block_ff_0 = dsd.block_ff(dsd.dsd_FRAME_P25_PHASE_1,dsd.dsd_MOD_AUTO_SELECT,3,2,True)
+		self.dsd_block_ff_0 = dsd.block_ff(dsd.dsd_FRAME_P25_PHASE_1,dsd.dsd_MOD_C4FM,3,3,True)
 		self.blocks_multiply_const_vxx_0 = blocks.multiply_const_vff((10.**(audio_mul/10.), ))
 		self.blks2_rational_resampler_xxx_1 = blks2.rational_resampler_ccc(
 			interpolation=channel_rate,
@@ -368,7 +344,6 @@ class dsd_grc(grc_wxgui.top_block_gui):
 		self.connect((self.osmosdr_source_c_0, 0), (self.wxgui_waterfallsink2_0, 0))
 		self.connect((self.osmosdr_source_c_0, 0), (self.wxgui_fftsink2_0, 0))
 		self.connect((self.dsd_block_ff_0, 0), (self.blks2_rational_resampler_xxx_0, 0))
-		self.connect((self.dsd_block_ff_0, 0), (self.wxgui_scopesink2_0, 0))
 		self.connect((self.blocks_multiply_const_vxx_0, 0), (self.audio_sink_0, 0))
 		self.connect((self.analog_quadrature_demod_cf_0, 0), (self.fir_filter_xxx_0, 0))
 		self.connect((self.fir_filter_xxx_0, 0), (self.wxgui_scopesink2_1, 0))
@@ -391,7 +366,6 @@ class dsd_grc(grc_wxgui.top_block_gui):
 	def set_freq(self, freq):
 		self.freq = freq
 		self.set_variable_static_text_0(self.freq+self.xlate_offset+self.xlate_offset_fine+self.auto_tune_offset)
-		self.set_xlate_offset(self.freq-self.click_freq)
 		self.set_click_freq(self.freq-self.config_xlate_offset)
 		self.wxgui_waterfallsink2_0.set_baseband_freq(self.freq)
 		self.wxgui_fftsink2_0.set_baseband_freq(self.freq)
@@ -401,8 +375,9 @@ class dsd_grc(grc_wxgui.top_block_gui):
 			self._config_freq_config.add_section("main")
 		self._config_freq_config.set("main", "freq", str(self.freq))
 		self._config_freq_config.write(open(".grc_op25", 'w'))
-		self.osmosdr_source_c_0.set_center_freq(self.freq, 0)
 		self._freq_text_box.set_value(self.freq)
+		self.osmosdr_source_c_0.set_center_freq(self.freq, 0)
+		self.set_xlate_offset(self.freq-self.click_freq)
 
 	def get_config_xlate_offset(self):
 		return self.config_xlate_offset
@@ -432,7 +407,7 @@ class dsd_grc(grc_wxgui.top_block_gui):
 		self.set_variable_static_text_0(self.freq+self.xlate_offset+self.xlate_offset_fine+self.auto_tune_offset)
 		self._xlate_offset_fine_slider.set_value(self.xlate_offset_fine)
 		self._xlate_offset_fine_text_box.set_value(self.xlate_offset_fine)
-		self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.xlate_offset+self.xlate_offset_fine-self.fine_click_freq-self.auto_tune_offset_freq)
+		self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.xlate_offset+self.xlate_offset_fine-self.fine_click_freq)
 
 	def get_xlate_offset(self):
 		return self.xlate_offset
@@ -447,7 +422,7 @@ class dsd_grc(grc_wxgui.top_block_gui):
 		self._config_xlate_offset_config.write(open(".grc_op25", 'w'))
 		self.set_variable_static_text_0(self.freq+self.xlate_offset+self.xlate_offset_fine+self.auto_tune_offset)
 		self._xlate_offset_text_box.set_value(self.xlate_offset)
-		self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.xlate_offset+self.xlate_offset_fine-self.fine_click_freq-self.auto_tune_offset_freq)
+		self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.xlate_offset+self.xlate_offset_fine-self.fine_click_freq)
 
 	def get_samp_rate(self):
 		return self.samp_rate
@@ -465,8 +440,8 @@ class dsd_grc(grc_wxgui.top_block_gui):
 
 	def set_samp_per_sym(self, samp_per_sym):
 		self.samp_per_sym = samp_per_sym
-		self.set_channel_rate(op25.SYMBOL_RATE*self.samp_per_sym)
 		self.fir_filter_xxx_0.set_taps(((1.0/self.samp_per_sym,)*self.samp_per_sym))
+		self.set_channel_rate(4800*self.samp_per_sym)
 
 	def get_decim(self):
 		return self.decim
@@ -488,7 +463,6 @@ class dsd_grc(grc_wxgui.top_block_gui):
 	def set_auto_tune_offset(self, auto_tune_offset):
 		self.auto_tune_offset = auto_tune_offset
 		self.set_variable_static_text_0(self.freq+self.xlate_offset+self.xlate_offset_fine+self.auto_tune_offset)
-		self.set_auto_tune_offset_freq(self.auto_tune_offset*op25.SYMBOL_DEVIATION)
 
 	def get_xlate_bandwidth(self):
 		return self.xlate_bandwidth
@@ -542,7 +516,7 @@ class dsd_grc(grc_wxgui.top_block_gui):
 	def set_fine_click_freq(self, fine_click_freq):
 		self.fine_click_freq = fine_click_freq
 		self.wxgui_fftsink2_0_0.set_baseband_freq(self.fine_click_freq)
-		self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.xlate_offset+self.xlate_offset_fine-self.fine_click_freq-self.auto_tune_offset_freq)
+		self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.xlate_offset+self.xlate_offset_fine-self.fine_click_freq)
 
 	def get_channel_rate(self):
 		return self.channel_rate
@@ -552,14 +526,6 @@ class dsd_grc(grc_wxgui.top_block_gui):
 		self.wxgui_waterfallsink2_0_0.set_sample_rate(self.channel_rate)
 		self.wxgui_fftsink2_0_0.set_sample_rate(self.channel_rate)
 		self.wxgui_scopesink2_1.set_sample_rate(self.channel_rate)
-
-	def get_auto_tune_offset_freq(self):
-		return self.auto_tune_offset_freq
-
-	def set_auto_tune_offset_freq(self, auto_tune_offset_freq):
-		self.auto_tune_offset_freq = auto_tune_offset_freq
-		self._auto_tune_offset_freq_static_text.set_value(self.auto_tune_offset_freq)
-		self.freq_xlating_fir_filter_xxx_0.set_center_freq(self.xlate_offset+self.xlate_offset_fine-self.fine_click_freq-self.auto_tune_offset_freq)
 
 	def get_audio_mul(self):
 		return self.audio_mul

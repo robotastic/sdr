@@ -2,7 +2,7 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Top Block
-# Generated: Wed Aug 14 10:24:30 2013
+# Generated: Sun Aug 25 15:20:59 2013
 ##################################################
 
 from gnuradio import eng_notation
@@ -28,7 +28,7 @@ class top_block(grc_wxgui.top_block_gui):
 		# Variables
 		##################################################
 		self.samp_rate = samp_rate = 2000000
-		self.freq = freq = 524800000
+		self.freq = freq = 856000000
 
 		##################################################
 		# Blocks
@@ -48,8 +48,8 @@ class top_block(grc_wxgui.top_block_gui):
 			sizer=_freq_sizer,
 			value=self.freq,
 			callback=self.set_freq,
-			minimum=524000000,
-			maximum=545900000,
+			minimum=855000000,
+			maximum=859000000,
 			num_steps=100,
 			style=wx.SL_HORIZONTAL,
 			cast=float,
@@ -58,7 +58,7 @@ class top_block(grc_wxgui.top_block_gui):
 		self.Add(_freq_sizer)
 		self.wxgui_fftsink2_0 = fftsink2.fft_sink_c(
 			self.GetWin(),
-			baseband_freq=0,
+			baseband_freq=freq,
 			y_per_div=10,
 			y_divs=10,
 			ref_level=0,
@@ -66,7 +66,7 @@ class top_block(grc_wxgui.top_block_gui):
 			sample_rate=samp_rate,
 			fft_size=1024,
 			fft_rate=15,
-			average=False,
+			average=True,
 			avg_alpha=None,
 			title="FFT Plot",
 			peak_hold=False,
@@ -79,7 +79,7 @@ class top_block(grc_wxgui.top_block_gui):
 		self.osmosdr_source_c_0.set_dc_offset_mode(0, 0)
 		self.osmosdr_source_c_0.set_iq_balance_mode(0, 0)
 		self.osmosdr_source_c_0.set_gain_mode(0, 0)
-		self.osmosdr_source_c_0.set_gain(10, 0)
+		self.osmosdr_source_c_0.set_gain(14, 0)
 		self.osmosdr_source_c_0.set_if_gain(30, 0)
 		self.osmosdr_source_c_0.set_bb_gain(30, 0)
 		self.osmosdr_source_c_0.set_antenna("", 0)
@@ -97,8 +97,8 @@ class top_block(grc_wxgui.top_block_gui):
 
 	def set_samp_rate(self, samp_rate):
 		self.samp_rate = samp_rate
-		self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)
 		self.osmosdr_source_c_0.set_sample_rate(self.samp_rate)
+		self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)
 
 	def get_freq(self):
 		return self.freq
@@ -106,6 +106,7 @@ class top_block(grc_wxgui.top_block_gui):
 	def set_freq(self, freq):
 		self.freq = freq
 		self.osmosdr_source_c_0.set_center_freq(self.freq, 0)
+		self.wxgui_fftsink2_0.set_baseband_freq(self.freq)
 		self._freq_slider.set_value(self.freq)
 		self._freq_text_box.set_value(self.freq)
 
