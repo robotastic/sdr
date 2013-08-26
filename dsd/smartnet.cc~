@@ -119,7 +119,7 @@ float parsefreq(string s) {
                 retfreq = getfreq(command);
 	}
         
-	cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
+	cout << "Command: " << command << " Address: " << address << " GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
 
 	lastcmd = command;
        
@@ -208,7 +208,7 @@ std::string device_addr;
 
 	gr_multiply_cc_sptr mixer = gr_make_multiply_cc();
 	
-	gr_fir_filter_ccf_sptr downsample = gr_make_fir_filter_ccf(decim, gr_firdes::low_pass(1, samples_per_second, 10000, 5000, gr_firdes::WIN_HANN));
+	gr_fir_filter_ccf_sptr downsample = gr_make_fir_filter_ccf(decim, gr_firdes::low_pass(1, samples_per_second, 10000, 1000, gr_firdes::WIN_HANN));
 	//gr::filter::freq_xlating_fir_filter_ccf::sptr downsample = gr::filter::freq_xlating_fir_filter_ccf::make(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN), 0,samples_per_second);
 
 	gr_pll_freqdet_cf_sptr pll_demod = gr_make_pll_freqdet_cf(2.0 / clockrec_oversample, 										 2*pi/clockrec_oversample, 
@@ -227,9 +227,9 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 
 	smartnet_crc_sptr crc = smartnet_make_crc(queue);
 
-  	//audio_sink::sptr sink = audio_make_sink(44100);
-	//log_dsd_sptr log_dsd = make_log_dsd( chan_freq, center_freq) ;
-
+  	audio_sink::sptr sink = audio_make_sink(44100);
+log_dsd_sptr log_dsd = make_log_dsd( chan_freq, center_freq) ;
+/*
 	tb->connect(offset_sig, 0, mixer, 0);
 	tb->connect(src, 0, mixer, 1);
 	tb->connect(mixer, 0, downsample, 0);
@@ -240,13 +240,13 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(slicer, 0, start_correlator, 0);
 	tb->connect(start_correlator, 0, deinterleave, 0);
 	tb->connect(deinterleave, 0, crc, 0);
-
-	/*tb->connect(src, 0, log_dsd, 0);
+*/
+	tb->connect(src, 0, log_dsd, 0);
 	tb->connect(log_dsd, 0, sink,0);
-	*/
-	//tb->run();
+	
+	tb->run();
 
-	tb->start();
+/*	tb->start();
 
 	while (1) {
 		if (!queue->empty_p())
@@ -264,7 +264,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 
 	}
 	
-  
+  */
 
   // Exit normally.
   return 0;
