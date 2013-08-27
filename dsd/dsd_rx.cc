@@ -77,6 +77,23 @@
 #include <gr_fir_filter_ccf.h>
 #include <gr_top_block.h>
 #include <gr_multiply_cc.h>
+#include <gr_io_signature.h>
+#include <gr_hier_block2.h>
+#include <gr_firdes.h>
+#include <gr_fir_filter_ccf.h>
+#include <gr_fir_filter_fff.h>
+#include <gr_freq_xlating_fir_filter_ccf.h>
+#include <filter/firdes.h>
+#include <filter/rational_resampler_base_ccc.h>
+#include <gr_quadrature_demod_cf.h>
+#include <analog/quadrature_demod_cf.h>
+#include <dsd_block_ff.h>
+#include <gr_sig_source_f.h>
+#include <gr_sig_source_c.h>
+#include <gr_multiply_cc.h>
+#include <gr_file_sink.h>
+#include <gr_rational_resampler_base_ccf.h>
+#include <gr_rational_resampler_base_fff.h>
 
 
 
@@ -87,46 +104,39 @@ namespace po = boost::program_options;
 
 using namespace std;
 
-int lastcmd = 0;
 
-
-
-float getfreq(int cmd) {
-	float freq;
-		if (cmd < 0x1b8) {	
-			freq = float(cmd * 0.025 + 851.0125);
-		} else if (cmd < 0x230) {
-			freq = float(cmd * 0.025 + 851.0125 - 10.9875);
-			} else {
-			freq = 0;
-			}
-	
-	return freq;
+unsigned GCD(unsigned u, unsigned v) {
+    while ( v != 0) {
+        unsigned r = u % v;
+        u = v;
+        v = r;
+    }
+    return u;
 }
 
-float parsefreq(string s) {
-	float retfreq = 0;
-	std::vector<std::string> x;
-	boost::split(x, s, boost::is_any_of(","), boost::token_compress_on);
-	//vector<string> x = split(s, ","); 
-	int address = atoi( x[0].c_str() ) & 0xFFF0;
-	int groupflag = atoi( x[1].c_str() );
-	int command = atoi( x[2].c_str() );
-	
-	
-            
-        if ((command < 0x2d0) && ( lastcmd == 0x308)) {
-                retfreq = getfreq(command);
-	}
-        
-	cout << "Command: " << command << " Address: " << address << " GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
+std::vector<float> design_filter(double interpolation, double deci) {
 
-	lastcmd = command;
-       
 
-	return retfreq;
+    
+
+
+
+
+    float beta = 5.0;
+    float trans_width = 0.5 - 0.4;
+    float mid_transition_band = 0.5 - trans_width/2;
+
+ std::vector<float> result = gr_firdes::low_pass(
+		              interpolation,
+				1,	                     
+	                      mid_transition_band/interpolation, 
+                              trans_width/interpolation,         
+                              gr_firdes::WIN_KAISER,
+                              beta                               
+                              );
+
+	return result;
 }
-
 
 int main(int argc, char **argv)
 {
@@ -165,7 +175,7 @@ std::string device_addr;
 
 
  
-  gr_top_block_sptr tb = gr_make_top_block("smartnet");
+  gr_top_block_sptr tb = gr_make_top_block("dsd_rx");
 
 	
 	osmosdr_source_c_sptr src = osmosdr_make_source_c();
@@ -184,65 +194,80 @@ std::string device_addr;
 
 
 
-
-	float samples_per_second = samp_rate;
-	float syms_per_sec = 3600;
-	float gain_mu = 0.01;
-	float mu=0.5;
-	float omega_relative_limit = 0.3;
+	
+	int samp_per_sym = 10;
+	int decim = 20;
+	float xlate_bandwidth = 12500; //24260.0;
+	float channel_rate = 4800 * samp_per_sym;
+	double pre_channel_rate = double(samp_rate/decim);
 	float offset = center_freq - chan_freq;
-	float clockrec_oversample = 3;
-	int decim = int(samples_per_second / (syms_per_sec * clockrec_oversample));
-	float sps = samples_per_second/decim/syms_per_sec; 
+	double vocoder_rate = 8000;
+	double audio_rate = 44100;
 	const double pi = boost::math::constants::pi<double>();
+
+	audio_sink::sptr sink;
+    	gr_fir_filter_ccf_sptr lpf;
+	gr_fir_filter_fff_sptr sym_filter;
+	gr_freq_xlating_fir_filter_ccf_sptr prefilter;
+	gr_sig_source_c_sptr offset_sig; 
+
+	gr_multiply_cc_sptr mixer;
+	gr_file_sink_sptr fs;
+	gr_file_sink_sptr fs2;
+	gr_rational_resampler_base_ccf_sptr downsample_sig;
+	gr_rational_resampler_base_fff_sptr upsample_audio;
+	//gr::analog::quadrature_demod_cf::sptr demod;
+	gr_quadrature_demod_cf_sptr demod;
+	dsd_block_ff_sptr dsd;
 	
 	cout << "Control channel offset: " << offset << endl;
 	cout << "Decim: " << decim << endl;
-	cout << "Samples per symbol: " << sps << endl;
-
-	gr_msg_queue_sptr queue = gr_make_msg_queue();
-	gr_file_sink_sptr tester = gr_make_file_sink(sizeof(gr_complex), "test.dat");	
+	cout << "Samples per symbol: " << samp_per_sym << endl;
 
 
-	gr_sig_source_c_sptr offset_sig = gr_make_sig_source_c(samp_rate, GR_SIN_WAVE, offset, 1.0, 0.0);
 
-	gr_multiply_cc_sptr mixer = gr_make_multiply_cc();
+
+	prefilter = gr_make_freq_xlating_fir_filter_ccf(decim, 
+						       gr_firdes::low_pass(1, samp_rate, xlate_bandwidth/2, 6000),
+						       -offset, 
+						       samp_rate);
+	lpf = gr_make_fir_filter_ccf(decim, gr_firdes::low_pass(1, samp_rate, xlate_bandwidth/2, 2000));
+	unsigned int d = GCD(channel_rate, pre_channel_rate);
+    	channel_rate = floor(channel_rate  / d);
+    	pre_channel_rate = floor(pre_channel_rate / d);
+
+	downsample_sig = gr_make_rational_resampler_base_ccf(channel_rate, pre_channel_rate, design_filter(channel_rate, pre_channel_rate)); 
+
+	d = GCD(audio_rate, vocoder_rate);
+    	audio_rate = floor(audio_rate  / d);
+    	vocoder_rate = floor(vocoder_rate / d);
+	upsample_audio = gr_make_rational_resampler_base_fff(audio_rate, vocoder_rate, design_filter(audio_rate, vocoder_rate));
+
+	demod = gr_make_quadrature_demod_cf(1.6);
+	//demod = gr::analog::quadrature_demod_cf::make(1.6);
+	const float a[] = { 0.1, 0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1};
+
+   	std::vector<float> data( a,a + sizeof( a ) / sizeof( a[0] ) );
+	sym_filter = gr_make_fir_filter_fff(1, data);
+	fs = gr_make_file_sink(sizeof(float),"demod.dat");
+	fs2 = gr_make_file_sink(sizeof(float),"sym.dat");
+	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1);
+	sink = audio_make_sink(44100);
 	
-	gr_fir_filter_ccf_sptr downsample = gr_make_fir_filter_ccf(decim, gr_firdes::low_pass(1, samples_per_second, 10000, 1000, gr_firdes::WIN_HANN));
-	//gr::filter::freq_xlating_fir_filter_ccf::sptr downsample = gr::filter::freq_xlating_fir_filter_ccf::make(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN), 0,samples_per_second);
+	//connect(self(), 0, mixer, 0);
+	//connect(offset_sig, 0, mixer, 1);
+	//connect(mixer, 0, lpf, 0);
+	//connect(lpf, 0, downsample_sig, 0);
+	tb->connect(src, 0, prefilter, 0);
+	tb->connect(prefilter, 0, downsample_sig, 0);
+	tb->connect(downsample_sig, 0, demod, 0);
+	tb->connect(demod, 0, sym_filter, 0);
+	tb->connect(sym_filter, 0, dsd, 0);
+	tb->connect(dsd, 0, upsample_audio,0);
+	tb->connect(upsample_audio, 0, sink,0);
+	tb->connect(demod,0,fs,0);
+	tb->connect(sym_filter,0,fs2,0);
 
-	gr_pll_freqdet_cf_sptr pll_demod = gr_make_pll_freqdet_cf(2.0 / clockrec_oversample, 										 2*pi/clockrec_oversample, 
-										-2*pi/clockrec_oversample);
-
-	digital_fll_band_edge_cc_sptr carriertrack = digital_make_fll_band_edge_cc(sps, 0.6, 64, 1.0);
-
-	digital_clock_recovery_mm_ff_sptr softbits = digital_make_clock_recovery_mm_ff(sps, 0.25 * gain_mu * gain_mu, mu, gain_mu, omega_relative_limit); 
-
-
-	digital_binary_slicer_fb_sptr slicer =  digital_make_binary_slicer_fb();
-gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access_code_tag_bb("10101100",0,"smartnet_preamble");
-
-
-	smartnet_deinterleave_sptr deinterleave = smartnet_make_deinterleave();
-
-	smartnet_crc_sptr crc = smartnet_make_crc(queue);
-
-  	audio_sink::sptr sink = audio_make_sink(44100);
-log_dsd_sptr log_dsd = make_log_dsd( chan_freq, center_freq) ;
-/*
-	tb->connect(offset_sig, 0, mixer, 0);
-	tb->connect(src, 0, mixer, 1);
-	tb->connect(mixer, 0, downsample, 0);
-	tb->connect(downsample, 0, carriertrack, 0);
-	tb->connect(carriertrack, 0, pll_demod, 0);
-	tb->connect(pll_demod, 0, softbits, 0);
-	tb->connect(softbits, 0, slicer, 0);
-	tb->connect(slicer, 0, start_correlator, 0);
-	tb->connect(start_correlator, 0, deinterleave, 0);
-	tb->connect(deinterleave, 0, crc, 0);
-*/
-	tb->connect(src, 0, log_dsd, 0);
-	tb->connect(log_dsd, 0, sink,0);
 	
 	tb->run();
 

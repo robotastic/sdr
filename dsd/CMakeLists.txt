@@ -122,7 +122,7 @@ link_directories(
 
 
 add_executable(dsd_rx dsd_rx.cc)
-target_link_libraries(gnuradio-core gnuradio-audio gnuradio-osmosdr gnuradio-filter gnuradio-digital gnuradio-analog ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} ${LIBDSD_LIBRARIES} )
+target_link_libraries(dsd_rx gnuradio-core gnuradio-audio gnuradio-osmosdr gnuradio-filter gnuradio-digital gnuradio-analog ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} ${LIBDSD_LIBRARIES} )
 
 INSTALL(TARGETS
     dsd_rx
