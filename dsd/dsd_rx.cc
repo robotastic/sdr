@@ -229,7 +229,7 @@ std::string device_addr;
 
 	prefilter = gr_make_freq_xlating_fir_filter_ccf(decim, 
 						       gr_firdes::low_pass(1, samp_rate, xlate_bandwidth/2, 6000),
-						       -offset, 
+						       offset, 
 						       samp_rate);
 	lpf = gr_make_fir_filter_ccf(decim, gr_firdes::low_pass(1, samp_rate, xlate_bandwidth/2, 2000));
 	unsigned int d = GCD(channel_rate, pre_channel_rate);
@@ -265,8 +265,8 @@ std::string device_addr;
 	tb->connect(sym_filter, 0, dsd, 0);
 	tb->connect(dsd, 0, upsample_audio,0);
 	tb->connect(upsample_audio, 0, sink,0);
-	tb->connect(demod,0,fs,0);
-	tb->connect(sym_filter,0,fs2,0);
+	//tb->connect(demod,0,fs,0);
+	//tb->connect(sym_filter,0,fs2,0);
 
 	
 	tb->run();
