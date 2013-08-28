@@ -2,7 +2,7 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Top Block
-# Generated: Sun Aug 25 15:20:59 2013
+# Generated: Tue Aug 27 22:04:51 2013
 ##################################################
 
 from gnuradio import eng_notation
@@ -28,7 +28,7 @@ class top_block(grc_wxgui.top_block_gui):
 		# Variables
 		##################################################
 		self.samp_rate = samp_rate = 2000000
-		self.freq = freq = 856000000
+		self.freq = freq = 490000000
 
 		##################################################
 		# Blocks
@@ -48,8 +48,8 @@ class top_block(grc_wxgui.top_block_gui):
 			sizer=_freq_sizer,
 			value=self.freq,
 			callback=self.set_freq,
-			minimum=855000000,
-			maximum=859000000,
+			minimum=488000000,
+			maximum=496000000,
 			num_steps=100,
 			style=wx.SL_HORIZONTAL,
 			cast=float,

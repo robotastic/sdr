@@ -57,8 +57,8 @@ private:
 
 	gr_rational_resampler_base_ccf_sptr downsample_sig;
 	gr_rational_resampler_base_fff_sptr upsample_audio;
-	gr::analog::quadrature_demod_cf::sptr demod;
-	//gr_quadrature_demod_cf_sptr demod;
+	//gr::analog::quadrature_demod_cf::sptr demod;
+	gr_quadrature_demod_cf_sptr demod;
 	dsd_block_ff_sptr dsd;
 
 
