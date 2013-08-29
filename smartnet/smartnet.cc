@@ -88,7 +88,7 @@ namespace po = boost::program_options;
 using namespace std;
 
 int lastcmd = 0;
-
+log_dsd_sptr log_dsd;
 
 
 float getfreq(int cmd) {
@@ -117,9 +117,15 @@ float parsefreq(string s) {
             
         if ((command < 0x2d0) && ( lastcmd == 0x308)) {
                 retfreq = getfreq(command);
+		if (address != 56016) {
+		log_dsd->tune_offset(retfreq);
+		cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
+		} else {
+		cout << "Ignoring MOSCAD Data" << endl;
+		}
 	}
         
-	cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
+	//cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
 
 	lastcmd = command;
        
@@ -228,7 +234,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	smartnet_crc_sptr crc = smartnet_make_crc(queue);
 
   	audio_sink::sptr sink = audio_make_sink(44100);
-	log_dsd_sptr log_dsd = make_log_dsd( chan_freq, center_freq) ;
+	log_dsd = make_log_dsd( chan_freq, center_freq) ;
 
 	tb->connect(offset_sig, 0, mixer, 0);
 	tb->connect(src, 0, mixer, 1);

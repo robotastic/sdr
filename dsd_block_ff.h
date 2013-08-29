@@ -236,7 +236,8 @@ DSD_API dsd_block_ff_sptr dsd_make_block_ff (dsd_frame_mode frame = dsd_FRAME_AU
  * \brief pass discriminator output through Digital Speech Decoder
  * \ingroup block
  */
-class DSD_API dsd_block_ff : public gr_sync_decimator
+//class DSD_API dsd_block_ff : public gr_sync_decimator
+class DSD_API dsd_block_ff : public gr_block
 {
 private:
   // The friend declaration allows dsd_make_block_ff to
@@ -256,9 +257,14 @@ private:
 
   // Where all the action really happens
 
+ int general_work (int noutput_items,
+			gr_vector_int &ninput_items,
+			gr_vector_const_void_star &input_items,
+			gr_vector_void_star &output_items);
+/*
   int work (int noutput_items,
 	    gr_vector_const_void_star &input_items,
-	    gr_vector_void_star &output_items);
+	    gr_vector_void_star &output_items);*/
 };
 
 #endif /* INCLUDED_DSD_BLOCK_FF_H */

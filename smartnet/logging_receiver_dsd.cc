@@ -40,9 +40,9 @@ log_dsd::log_dsd(float f, float c)
 	center = c;
 	float offset = center - 856987500.0;
 	int samp_per_sym = 10;
-	double samp_rate = 1000000;
-	int decim = 20;
-	float xlate_bandwidth = 12500; //24260.0;
+	double samp_rate = 8000000;
+	int decim = 160;
+	float xlate_bandwidth = 14000; //24260.0;
 	float channel_rate = 4800 * samp_per_sym;
 	double pre_channel_rate = double(samp_rate/decim);
 	double vocoder_rate = 8000;
@@ -110,8 +110,8 @@ log_dsd::~log_dsd() {
 }
 
 void log_dsd::tune_offset(float f) {
-	offset_sig->set_frequency(center - (f*1000000));
-	// << "Offset set to: " << f*1000000-center << endl;
+	prefilter->set_center_freq(center - (f*1000000));
+	std::cout << "Offset set to: " << f*1000000-center << std::endl;
 }
 	
 
