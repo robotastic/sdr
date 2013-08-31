@@ -250,7 +250,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 
   	audio_sink::sptr sink = audio_make_sink(44100);
 	//gr_wavfile_sink_sptr wav_sink = gr_make_wavfile_sink("test.wav",1,44100,8); 
-	gr::blocks::wavfile_sink::sptr wav_sink = gr::blocks::wavfile_sink::make("test.wav",1,44100,8);
+	gr::blocks::wavfile_sink::sptr wav_sink = gr::blocks::wavfile_sink::make("test.wav",1,8000,8);
 	log_dsd = make_log_dsd( chan_freq, center_freq) ;
 
 	tb->connect(offset_sig, 0, mixer, 0);
@@ -265,7 +265,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(deinterleave, 0, crc, 0);
 
 	tb->connect(src, 0, log_dsd, 0);
-	tb->connect(log_dsd,0, wav_sink, 0);
+	tb->connect(log_dsd,0,wav_sink, 0);
 	
 	//tb->run();
 

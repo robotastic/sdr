@@ -101,10 +101,10 @@ log_dsd::log_dsd(float f, float c)
 	connect(downsample_sig, 0, demod, 0);
 	connect(demod, 0, sym_filter, 0);
 	connect(sym_filter, 0, dsd, 0);
-	//connect(dsd, 0, wav_sink,0);
+	connect(dsd, 0, self(),0);
 		
-	connect(dsd, 0, upsample_audio,0);
-	connect(upsample_audio, 0, self(),0);
+	//connect(dsd, 0, upsample_audio,0);
+	//connect(upsample_audio, 0, self(),0);
 	//connect(sym_filter,0,fs,0);	
 }
 
