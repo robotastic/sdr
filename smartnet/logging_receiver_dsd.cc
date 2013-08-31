@@ -88,8 +88,10 @@ log_dsd::log_dsd(float f, float c)
    	std::vector<float> data( a,a + sizeof( a ) / sizeof( a[0] ) );
 	sym_filter = gr_make_fir_filter_fff(1, data); //std::vector<float>(10, 0.1 ));
 	fs = gr_make_file_sink(sizeof(float),"demod.dat");
-	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1);
-	
+	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1,dsd_MOD_AUTO_SELECT,3,2,0);
+	//wav_sink = smartnet_make_wavsink ("test.wav",1,8000,8);
+	//wav_sink = gr_make_wavfile_sink("test.wav",1,8000,8); 
+	//wav_sink = gr::blocks::wavfile_sink::make("test.wav",1,48000,8);
 	//connect(self(), 0, mixer, 0);
 	//connect(offset_sig, 0, mixer, 1);
 	//connect(mixer, 0, lpf, 0);
@@ -99,15 +101,21 @@ log_dsd::log_dsd(float f, float c)
 	connect(downsample_sig, 0, demod, 0);
 	connect(demod, 0, sym_filter, 0);
 	connect(sym_filter, 0, dsd, 0);
+	//connect(dsd, 0, wav_sink,0);
+		
 	connect(dsd, 0, upsample_audio,0);
 	connect(upsample_audio, 0, self(),0);
-	//connect(sym_filter,0,fs,0);
-
+	//connect(sym_filter,0,fs,0);	
 }
 
 log_dsd::~log_dsd() {
 
 }
+/*
+void log_dsd::forecast(int noutput_items, gr_vector_int &ninput_items_required) {
+	ninput_items_required[0] = 4 * noutput_items;
+}*/
+
 
 void log_dsd::tune_offset(float f) {
 	prefilter->set_center_freq(center - (f*1000000));

@@ -24,6 +24,10 @@
 #include <gr_file_sink.h>
 #include <gr_rational_resampler_base_ccf.h>
 #include <gr_rational_resampler_base_fff.h>
+#include <gr_block.h>
+//#include <smartnet_wavsink.h>
+//#include <gr_wavfile_sink.h>
+//#include <blocks/wavfile_sink.h>
 
 class log_dsd;
 
@@ -40,8 +44,12 @@ protected:
 public:
     ~log_dsd();
 	void tune_offset(float f);
+	void get_freq();
+	void close();
+	void timeout();
 	void mute();
 	void unmute();	
+	//void forecast(int noutput_items, gr_vector_int &ninput_items_required);
 
 private:
 	float center, freq;
@@ -60,6 +68,9 @@ private:
 	//gr::analog::quadrature_demod_cf::sptr demod;
 	gr_quadrature_demod_cf_sptr demod;
 	dsd_block_ff_sptr dsd;
+	//gr_wavfile_sink_sptr wav_sink;
+	//smartnet_wavsink_sptr wav_sink
+	//gr::blocks::wavfile_sink::sptr wav_sink;
 
 
 };

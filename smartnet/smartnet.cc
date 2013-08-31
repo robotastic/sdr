@@ -78,6 +78,10 @@
 #include <gr_top_block.h>
 #include <gr_multiply_cc.h>
 
+//#include <smartnet_wavsink.h>
+//#include <gr_wavfile_sink.h>
+#include <blocks/wavfile_sink.h>
+
 
 
 
@@ -115,13 +119,18 @@ float parsefreq(string s) {
 	
 	
             
-        if ((command < 0x2d0) && ( lastcmd == 0x308)) {
-                retfreq = getfreq(command);
-		if (address != 56016) {
-		log_dsd->tune_offset(retfreq);
-		cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
+        if (command < 0x2d0) {
+
+		if ( lastcmd == 0x308) {
+		        retfreq = getfreq(command);
+			if (address != 56016) {
+				log_dsd->tune_offset(retfreq);
+				cout << "Channel Grant - Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
+			} else {
+				cout << "Ignoring MOSCAD Data" << endl;
+			}
 		} else {
-		cout << "Ignoring MOSCAD Data" << endl;
+			cout << "Call Continuation - Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << getfreq(command) << endl;
 		}
 	}
         
@@ -215,6 +224,12 @@ std::string device_addr;
 	gr_multiply_cc_sptr mixer = gr_make_multiply_cc();
 	
 	gr_fir_filter_ccf_sptr downsample = gr_make_fir_filter_ccf(decim, gr_firdes::low_pass(1, samples_per_second, 10000, 5000, gr_firdes::WIN_HANN));
+
+	/*prefilter = gr_make_freq_xlating_fir_filter_ccf(decim, 
+						       gr_firdes::low_pass(1, samp_rate, xlate_bandwidth/2, 6000),
+						       offset, 
+						       samp_rate);*/
+
 	//gr::filter::freq_xlating_fir_filter_ccf::sptr downsample = gr::filter::freq_xlating_fir_filter_ccf::make(decim, gr::filter::firdes::low_pass(1, samples_per_second, 10000, 1000, gr::filter::firdes::WIN_HANN), 0,samples_per_second);
 
 	gr_pll_freqdet_cf_sptr pll_demod = gr_make_pll_freqdet_cf(2.0 / clockrec_oversample, 										 2*pi/clockrec_oversample, 
@@ -234,6 +249,8 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	smartnet_crc_sptr crc = smartnet_make_crc(queue);
 
   	audio_sink::sptr sink = audio_make_sink(44100);
+	//gr_wavfile_sink_sptr wav_sink = gr_make_wavfile_sink("test.wav",1,44100,8); 
+	gr::blocks::wavfile_sink::sptr wav_sink = gr::blocks::wavfile_sink::make("test.wav",1,44100,8);
 	log_dsd = make_log_dsd( chan_freq, center_freq) ;
 
 	tb->connect(offset_sig, 0, mixer, 0);
@@ -248,7 +265,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(deinterleave, 0, crc, 0);
 
 	tb->connect(src, 0, log_dsd, 0);
-	tb->connect(log_dsd, 0, sink,0);
+	tb->connect(log_dsd,0, wav_sink, 0);
 	
 	//tb->run();
 
