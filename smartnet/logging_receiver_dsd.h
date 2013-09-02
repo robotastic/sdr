@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
+
 #include <boost/shared_ptr.hpp>
 #include <gr_io_signature.h>
 #include <gr_hier_block2.h>
@@ -25,34 +27,44 @@
 #include <gr_rational_resampler_base_ccf.h>
 #include <gr_rational_resampler_base_fff.h>
 #include <gr_block.h>
+//Valve
+#include <gr_null_sink.h>
+#include <gr_null_source.h>
+#include <gr_head.h>
+#include <gr_kludge_copy.h>
 //#include <smartnet_wavsink.h>
-//#include <gr_wavfile_sink.h>
+#include <gr_wavfile_sink.h>
 //#include <blocks/wavfile_sink.h>
 
 class log_dsd;
 
 typedef boost::shared_ptr<log_dsd> log_dsd_sptr;
 
-log_dsd_sptr make_log_dsd(float f, float c);
+log_dsd_sptr make_log_dsd(float f, float c, long t);
 
 class log_dsd : public gr_hier_block2
 {
-  friend log_dsd_sptr make_log_dsd(float f, float c);
+  friend log_dsd_sptr make_log_dsd(float f, float c, long t);
 protected:
-    log_dsd(float f, float c);
+    log_dsd(float f, float c, long t);
 
 public:
     ~log_dsd();
 	void tune_offset(float f);
-	void get_freq();
+	float get_freq();
+	long get_talkgroup();
+	long timeout();
 	void close();
-	void timeout();
 	void mute();
 	void unmute();	
 	//void forecast(int noutput_items, gr_vector_int &ninput_items_required);
 
 private:
 	float center, freq;
+	bool muted;
+	long talkgroup;
+	time_t timestamp;
+    
 
     /* GR blocks */
     	gr_fir_filter_ccf_sptr lpf;
@@ -68,10 +80,13 @@ private:
 	//gr::analog::quadrature_demod_cf::sptr demod;
 	gr_quadrature_demod_cf_sptr demod;
 	dsd_block_ff_sptr dsd;
-	//gr_wavfile_sink_sptr wav_sink;
+	gr_wavfile_sink_sptr wav_sink;
 	//smartnet_wavsink_sptr wav_sink
 	//gr::blocks::wavfile_sink::sptr wav_sink;
-
+	gr_null_sink_sptr null_sink;
+	gr_null_source_sptr null_source;
+	gr_head_sptr head_source;
+	gr_kludge_copy_sptr copier;
 
 };
 

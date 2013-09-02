@@ -25,28 +25,13 @@
 #include <dsd_api.h>
 #include <gr_sync_decimator.h>
 
+/*
 extern "C"
 {
-  //  #include <dsd.h>
+  #include <dsd.h>
 }
+*/
 
-enum dsd_frame_mode {
-  dsd_FRAME_AUTO_DETECT,
-  dsd_FRAME_P25_PHASE_1,
-  dsd_FRAME_DSTAR,
-  dsd_FRAME_NXDN48_IDAS,
-  dsd_FRAME_NXDN96,
-  dsd_FRAME_PROVOICE,
-  dsd_FRAME_DMR_MOTOTRBO,
-  dsd_FRAME_X2_TDMA
-};
-
-enum dsd_modulation_optimizations {
-  dsd_MOD_AUTO_SELECT,
-  dsd_MOD_C4FM,
-  dsd_MOD_GFSK,
-  dsd_MOD_QPSK
-};
 
 struct mbe_parameters
 {
@@ -181,7 +166,7 @@ typedef struct
   mbe_parms *cur_mp;
   mbe_parms *prev_mp;
   mbe_parms *prev_mp_enhanced;
-
+  int p25kid;
   pthread_mutex_t input_mutex;
   pthread_cond_t input_ready;
   const float *input_samples;
@@ -199,6 +184,24 @@ typedef struct
 } dsd_state;
 
 
+
+enum dsd_frame_mode {
+  dsd_FRAME_AUTO_DETECT,
+  dsd_FRAME_P25_PHASE_1,
+  dsd_FRAME_DSTAR,
+  dsd_FRAME_NXDN48_IDAS,
+  dsd_FRAME_NXDN96,
+  dsd_FRAME_PROVOICE,
+  dsd_FRAME_DMR_MOTOTRBO,
+  dsd_FRAME_X2_TDMA
+};
+
+enum dsd_modulation_optimizations {
+  dsd_MOD_AUTO_SELECT,
+  dsd_MOD_C4FM,
+  dsd_MOD_GFSK,
+  dsd_MOD_QPSK
+};
 
 typedef struct
 {
@@ -230,7 +233,7 @@ typedef boost::shared_ptr<dsd_block_ff> dsd_block_ff_sptr;
  */
 DSD_API dsd_block_ff_sptr dsd_make_block_ff (dsd_frame_mode frame = dsd_FRAME_AUTO_DETECT,
                                              dsd_modulation_optimizations mod = dsd_MOD_AUTO_SELECT,
-                                             int uvquality = 3, bool errorbars = true, int verbosity = 2);
+                                             int uvquality = 3, bool errorbars = true, int verbosity = 2, bool empty = false);
 
 /*!
  * \brief pass discriminator output through Digital Speech Decoder
@@ -243,15 +246,16 @@ private:
   // The friend declaration allows dsd_make_block_ff to
   // access the private constructor.
 
-  friend DSD_API dsd_block_ff_sptr dsd_make_block_ff (dsd_frame_mode frame, dsd_modulation_optimizations mod, int uvquality, bool errorbars, int verbosity);
+  friend DSD_API dsd_block_ff_sptr dsd_make_block_ff (dsd_frame_mode frame, dsd_modulation_optimizations mod, int uvquality, bool errorbars, int verbosity, bool empty);
 
   dsd_params params;
 
   /*!
    * \brief pass discriminator output thread Digital Speech Decoder
    */
-  dsd_block_ff (dsd_frame_mode frame, dsd_modulation_optimizations mod, int uvquality, bool errorbars, int verbosity); // private constructor
-
+  dsd_block_ff (dsd_frame_mode frame, dsd_modulation_optimizations mod, int uvquality, bool errorbars, int verbosity, bool empty); // private constructor
+bool empty_frames;
+  
  public:
   ~dsd_block_ff ();	// public destructor
 

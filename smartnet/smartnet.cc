@@ -80,7 +80,7 @@
 
 //#include <smartnet_wavsink.h>
 //#include <gr_wavfile_sink.h>
-#include <blocks/wavfile_sink.h>
+//#include <blocks/wavfile_sink.h>
 
 
 
@@ -92,8 +92,12 @@ namespace po = boost::program_options;
 using namespace std;
 
 int lastcmd = 0;
-log_dsd_sptr log_dsd;
+double center_freq;
+//log_dsd_sptr log_dsd;
 
+gr_top_block_sptr tb;
+osmosdr_source_c_sptr src;
+vector<log_dsd_sptr> loggers;
 
 float getfreq(int cmd) {
 	float freq;
@@ -108,8 +112,9 @@ float getfreq(int cmd) {
 	return freq;
 }
 
-float parsefreq(string s) {
+float parse_message(string s) {
 	float retfreq = 0;
+	bool rxfound = false;
 	std::vector<std::string> x;
 	boost::split(x, s, boost::is_any_of(","), boost::token_compress_on);
 	//vector<string> x = split(s, ","); 
@@ -122,18 +127,80 @@ float parsefreq(string s) {
         if (command < 0x2d0) {
 
 		if ( lastcmd == 0x308) {
-		        retfreq = getfreq(command);
-			if (address != 56016) {
-				log_dsd->tune_offset(retfreq);
-				cout << "Channel Grant - Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
-			} else {
-				cout << "Ignoring MOSCAD Data" << endl;
+		        // Channel Grant
+			if ((address != 56016) && (address != 8176)) {
+				retfreq = getfreq(command);
 			}
 		} else {
-			cout << "Call Continuation - Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << getfreq(command) << endl;
+			// Call continuation
+			if  ((address != 56016) && (address != 8176))  {
+				retfreq = getfreq(command);
+			}
 		}
 	}
         
+	if (retfreq) {
+		for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {
+			log_dsd_sptr rx = *it;
+			if (rx->get_talkgroup() == address) {
+				//tb->lock();
+				if (rx->get_freq() != retfreq) {
+					rx->tune_offset(retfreq);
+				}
+				rx->unmute();
+				//tb->unlock();
+				rxfound = true;
+			} else {
+				if (rx->get_freq() == retfreq) {
+					//tb->lock();
+					rx->mute();
+					//tb->unlock();
+				}
+			}
+		}
+		if ((!rxfound) && (loggers.size() < 2)) {
+			log_dsd_sptr log = make_log_dsd( retfreq, center_freq,address);
+			loggers.push_back(log);
+			tb->lock();
+			tb->connect(src, 0, log, 0);
+			log->unmute();
+			tb->unlock();
+			cout << "Creating Logger - TG: " << address << "\t Freq: " << retfreq << endl;
+		}
+		
+		cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << loggers.size() << endl;
+	}
+
+	for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end();) {
+		log_dsd_sptr rx = *it;
+		if (rx->timeout() > 15.0) {
+			cout << "Deleting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
+			
+			tb->lock();
+			rx->close();
+			tb->disconnect(src, 0, rx, 0);
+			tb->unlock();
+			
+			it = loggers.erase(it);
+
+		} else {
+			++it;
+		}
+	}
+/*
+	for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end();++it) {
+		log_dsd_sptr rx = *it;
+		if (rx->timeout() > 10.0) {
+			//cout << "Muting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
+			
+			tb->lock();
+			rx->mute();
+			tb->unlock();
+			
+
+		} 
+	}*/
+
 	//cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
 
 	lastcmd = command;
@@ -146,7 +213,7 @@ float parsefreq(string s) {
 int main(int argc, char **argv)
 {
 std::string device_addr;
-    double center_freq, samp_rate, chan_freq, error;
+    double  samp_rate, chan_freq, error;
 	int if_gain, bb_gain, rf_gain;
     //setup the program options
     po::options_description desc("Allowed options");
@@ -180,10 +247,10 @@ std::string device_addr;
 
 
  
-  gr_top_block_sptr tb = gr_make_top_block("smartnet");
+ 	tb = gr_make_top_block("smartnet");
 
 	
-	osmosdr_source_c_sptr src = osmosdr_make_source_c();
+	src = osmosdr_make_source_c();
 	cout << "Setting sample rate to: " << samp_rate << endl;
 	src->set_sample_rate(samp_rate);
 	cout << "Tunning to " << center_freq - error << "hz" << endl;
@@ -211,12 +278,11 @@ std::string device_addr;
 	float sps = samples_per_second/decim/syms_per_sec; 
 	const double pi = boost::math::constants::pi<double>();
 	
-	cout << "Control channel offset: " << offset << endl;
+	/*cout << "Control channel offset: " << offset << endl;
 	cout << "Decim: " << decim << endl;
 	cout << "Samples per symbol: " << sps << endl;
-
+*/
 	gr_msg_queue_sptr queue = gr_make_msg_queue();
-	gr_file_sink_sptr tester = gr_make_file_sink(sizeof(gr_complex), "test.dat");	
 
 
 	gr_sig_source_c_sptr offset_sig = gr_make_sig_source_c(samp_rate, GR_SIN_WAVE, offset, 1.0, 0.0);
@@ -248,10 +314,9 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 
 	smartnet_crc_sptr crc = smartnet_make_crc(queue);
 
-  	audio_sink::sptr sink = audio_make_sink(44100);
-	//gr_wavfile_sink_sptr wav_sink = gr_make_wavfile_sink("test.wav",1,44100,8); 
-	gr::blocks::wavfile_sink::sptr wav_sink = gr::blocks::wavfile_sink::make("test.wav",1,8000,8);
-	log_dsd = make_log_dsd( chan_freq, center_freq) ;
+  	//audio_sink::sptr sink = audio_make_sink(44100);
+
+	
 
 	tb->connect(offset_sig, 0, mixer, 0);
 	tb->connect(src, 0, mixer, 1);
@@ -264,10 +329,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(start_correlator, 0, deinterleave, 0);
 	tb->connect(deinterleave, 0, crc, 0);
 
-	tb->connect(src, 0, log_dsd, 0);
-	tb->connect(log_dsd,0,wav_sink, 0);
 	
-	//tb->run();
 
 	tb->start();
 
@@ -278,7 +340,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 			gr_message_sptr msg;
 			msg = queue->delete_head();
 			sentence = msg->to_string();
-			parsefreq(sentence);	
+			parse_message(sentence);	
 			
 		} else {
 			
