@@ -2,7 +2,7 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Op25 Grc
-# Generated: Sat Aug 10 13:33:19 2013
+# Generated: Wed Sep  4 20:51:33 2013
 ##################################################
 
 from baz import message_callback
@@ -40,7 +40,7 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self._config_freq_config = ConfigParser.ConfigParser()
 		self._config_freq_config.read(".grc_op25")
 		try: config_freq = self._config_freq_config.getfloat("main", "freq")
-		except: config_freq = 434075000
+		except: config_freq = 489075000
 		self.config_freq = config_freq
 		self.freq = freq = config_freq
 		self._config_xlate_offset_config = ConfigParser.ConfigParser()
@@ -51,8 +51,8 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self.click_freq = click_freq = freq-config_xlate_offset
 		self.xlate_offset_fine = xlate_offset_fine = 0
 		self.xlate_offset = xlate_offset = freq-click_freq
-		self.samp_rate = samp_rate = 1000000
-		self.samp_per_sym = samp_per_sym = 10
+		self.samp_rate = samp_rate = 2000000
+		self.samp_per_sym = samp_per_sym = 6
 		self.decim = decim = 20
 		self._config_xlate_bandwidth_config = ConfigParser.ConfigParser()
 		self._config_xlate_bandwidth_config.read(".grc_op25")
@@ -72,8 +72,8 @@ class op25_grc(grc_wxgui.top_block_gui):
 		##################################################
 		# Message Queues
 		##################################################
-		op25_fsk4_0_msgq_out = baz_message_callback_0_msgq_in = gr.msg_queue(2)
 		op25_decoder_simple_0_msgq_out = op25_traffic_pane_0_msgq_in = gr.msg_queue(2)
+		op25_fsk4_0_msgq_out = baz_message_callback_0_msgq_in = gr.msg_queue(2)
 
 		##################################################
 		# Blocks
@@ -314,7 +314,7 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self.osmosdr_source_c_0.set_dc_offset_mode(0, 0)
 		self.osmosdr_source_c_0.set_iq_balance_mode(0, 0)
 		self.osmosdr_source_c_0.set_gain_mode(0, 0)
-		self.osmosdr_source_c_0.set_gain(10, 0)
+		self.osmosdr_source_c_0.set_gain(14, 0)
 		self.osmosdr_source_c_0.set_if_gain(gain, 0)
 		self.osmosdr_source_c_0.set_bb_gain(gain, 0)
 		self.osmosdr_source_c_0.set_antenna("", 0)
@@ -324,8 +324,9 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self.nb.GetPage(6).Add(self.op25_traffic_pane_0)
 		self.op25_fsk4_0 = op25.op25_fsk4(channel_rate=channel_rate, auto_tune_msgq=op25_fsk4_0_msgq_out,)
 		self.op25_decoder_simple_0 = op25.op25_decoder_simple(key="",traffic_msgq=op25_decoder_simple_0_msgq_out,)
-		self.gr_quadrature_demod_cf_0 = gr.quadrature_demod_cf(1.6)
+		self.gr_quadrature_demod_cf_0 = gr.quadrature_demod_cf((channel_rate/(2.0 * math.pi * op25.SYMBOL_DEVIATION)))
 		self.gr_freq_xlating_fir_filter_xxx_0 = gr.freq_xlating_fir_filter_ccc(decim, (firdes.low_pass(1, samp_rate, xlate_bandwidth/2, 6000)), xlate_offset+xlate_offset_fine-fine_click_freq-auto_tune_offset_freq, samp_rate)
+		self.gr_fir_filter_xxx_0 = gr.fir_filter_fff(1, ((1.0/samp_per_sym,)*samp_per_sym))
 		self.blocks_multiply_const_vxx_0 = blocks.multiply_const_vff((10.**(audio_mul/10.), ))
 		self.blks2_rational_resampler_xxx_1 = blks2.rational_resampler_ccc(
 			interpolation=channel_rate,
@@ -350,16 +351,17 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self.connect((self.blks2_rational_resampler_xxx_1, 0), (self.wxgui_fftsink2_0_0, 0))
 		self.connect((self.blks2_rational_resampler_xxx_1, 0), (self.wxgui_waterfallsink2_0_0, 0))
 		self.connect((self.blks2_rational_resampler_xxx_1, 0), (self.gr_quadrature_demod_cf_0, 0))
+		self.connect((self.gr_quadrature_demod_cf_0, 0), (self.gr_fir_filter_xxx_0, 0))
+		self.connect((self.gr_fir_filter_xxx_0, 0), (self.wxgui_scopesink2_1, 0))
 		self.connect((self.blks2_rational_resampler_xxx_0, 0), (self.blocks_multiply_const_vxx_0, 0))
 		self.connect((self.blocks_multiply_const_vxx_0, 0), (self.audio_sink_0, 0))
-		self.connect((self.op25_fsk4_0, 0), (self.op25_decoder_simple_0, 0))
+		self.connect((self.gr_fir_filter_xxx_0, 0), (self.op25_fsk4_0, 0))
 		self.connect((self.op25_decoder_simple_0, 0), (self.blks2_rational_resampler_xxx_0, 0))
 		self.connect((self.op25_fsk4_0, 0), (self.wxgui_scopesink2_0, 0))
 		self.connect((self.osmosdr_source_c_0, 0), (self.wxgui_waterfallsink2_0, 0))
 		self.connect((self.osmosdr_source_c_0, 0), (self.wxgui_fftsink2_0, 0))
 		self.connect((self.osmosdr_source_c_0, 0), (self.gr_freq_xlating_fir_filter_xxx_0, 0))
-		self.connect((self.gr_quadrature_demod_cf_0, 0), (self.wxgui_scopesink2_1, 0))
-		self.connect((self.gr_quadrature_demod_cf_0, 0), (self.op25_fsk4_0, 0))
+		self.connect((self.op25_fsk4_0, 0), (self.op25_decoder_simple_0, 0))
 
 
 	def get_config_freq(self):
@@ -374,12 +376,6 @@ class op25_grc(grc_wxgui.top_block_gui):
 
 	def set_freq(self, freq):
 		self.freq = freq
-		self._config_freq_config = ConfigParser.ConfigParser()
-		self._config_freq_config.read(".grc_op25")
-		if not self._config_freq_config.has_section("main"):
-			self._config_freq_config.add_section("main")
-		self._config_freq_config.set("main", "freq", str(self.freq))
-		self._config_freq_config.write(open(".grc_op25", 'w'))
 		self.set_variable_static_text_0(self.freq+self.xlate_offset+self.xlate_offset_fine+self.auto_tune_offset)
 		self._freq_text_box.set_value(self.freq)
 		self.set_xlate_offset(self.freq-self.click_freq)
@@ -387,6 +383,12 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self.wxgui_waterfallsink2_0.set_baseband_freq(self.freq)
 		self.wxgui_fftsink2_0.set_baseband_freq(self.freq)
 		self.osmosdr_source_c_0.set_center_freq(self.freq, 0)
+		self._config_freq_config = ConfigParser.ConfigParser()
+		self._config_freq_config.read(".grc_op25")
+		if not self._config_freq_config.has_section("main"):
+			self._config_freq_config.add_section("main")
+		self._config_freq_config.set("main", "freq", str(self.freq))
+		self._config_freq_config.write(open(".grc_op25", 'w'))
 
 	def get_config_xlate_offset(self):
 		return self.config_xlate_offset
@@ -441,8 +443,8 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self.set_pre_channel_rate(self.samp_rate/self.decim)
 		self.wxgui_waterfallsink2_0.set_sample_rate(self.samp_rate)
 		self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)
-		self.osmosdr_source_c_0.set_sample_rate(self.samp_rate)
 		self.gr_freq_xlating_fir_filter_xxx_0.set_taps((firdes.low_pass(1, self.samp_rate, self.xlate_bandwidth/2, 6000)))
+		self.osmosdr_source_c_0.set_sample_rate(self.samp_rate)
 
 	def get_samp_per_sym(self):
 		return self.samp_per_sym
@@ -450,6 +452,7 @@ class op25_grc(grc_wxgui.top_block_gui):
 	def set_samp_per_sym(self, samp_per_sym):
 		self.samp_per_sym = samp_per_sym
 		self.set_channel_rate(op25.SYMBOL_RATE*self.samp_per_sym)
+		self.gr_fir_filter_xxx_0.set_taps(((1.0/self.samp_per_sym,)*self.samp_per_sym))
 
 	def get_decim(self):
 		return self.decim
@@ -527,6 +530,7 @@ class op25_grc(grc_wxgui.top_block_gui):
 		self.wxgui_waterfallsink2_0_0.set_sample_rate(self.channel_rate)
 		self.wxgui_fftsink2_0_0.set_sample_rate(self.channel_rate)
 		self.wxgui_scopesink2_1.set_sample_rate(self.channel_rate)
+		self.gr_quadrature_demod_cf_0.set_gain((self.channel_rate/(2.0 * math.pi * op25.SYMBOL_DEVIATION)))
 
 	def get_auto_tune_offset_freq(self):
 		return self.auto_tune_offset_freq

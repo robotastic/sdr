@@ -111,6 +111,7 @@ include_directories(
     ${LIBOSMOSDR_INCLUDE_DIR}
     ${LIBDSD_INCLUDE_DIR}
     /usr/local/include/dsd/
+	./lib/
 )
 
 link_directories(
@@ -120,11 +121,14 @@ link_directories(
     ${LIBOSMOSDR_LIBRARIES}
     ${LIBDSD_LIBRARIES}
 	/usr/local/lib/
+	/usr/local/lib/pyton2.7/dist-packages/gnuradio/
 )
 
 
-add_executable(smartnet smartnet.cc smartnet_crc.cc smartnet_deinterleave.cc logging_receiver_dsd.cc smartnet_wavfile.cc smartnet_wavsink.cc)
-target_link_libraries(smartnet gnuradio-core gnuradio-audio gnuradio-blocks gnuradio-osmosdr gnuradio-filter gnuradio-digital gnuradio-analog ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} gr-dsd)
+add_executable(smartnet smartnet.cc smartnet_crc.cc smartnet_deinterleave.cc logging_receiver_dsd.cc logging_receiver_p25.cc smartnet_wavfile.cc smartnet_wavsink.cc)
+target_link_libraries(smartnet  gnuradio-core gnuradio-audio gnuradio-blocks gnuradio-osmosdr gnuradio-filter gnuradio-digital gnuradio-analog ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} gr-dsd op25 itpp)
+
+#${CMAKE_SOURCE_DIR}/libs/op25_fsk4_demod_ff.o  ${CMAKE_SOURCE_DIR}/libs/op25_decoder_bf.o ${CMAKE_SOURCE_DIR}/libs/data_unit.o ${CMAKE_SOURCE_DIR}/libs/data_unit_handler.o ${CMAKE_SOURCE_DIR}/libs/bch.o/home/luke/sdr/smartnet/libs/abstract_data_unit.o
 
 INSTALL(TARGETS
     smartnet

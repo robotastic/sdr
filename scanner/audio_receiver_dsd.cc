@@ -81,7 +81,7 @@ log_dsd::log_dsd(float f, float c, long t)
 
    	std::vector<float> data( a,a + sizeof( a ) / sizeof( a[0] ) );
 	sym_filter = gr_make_fir_filter_fff(1, data); 
-	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1,dsd_MOD_AUTO_SELECT,3,0,0, false);
+	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1,dsd_MOD_AUTO_SELECT,3,2,0, true);
 	null_sink = gr_make_null_sink(sizeof(gr_complex));
 	null_source = gr_make_null_source(sizeof(gr_complex));
 	copier = gr_make_kludge_copy(sizeof(gr_complex));
@@ -120,11 +120,11 @@ void log_dsd::unmute() {
 	timestamp = time(NULL);
 	if (muted) {
 
-	/*disconnect(self(),0, null_sink,0);
+	disconnect(self(),0, null_sink,0);
 	disconnect(head_source,0, prefilter,0);
-	connect(head_source,0, null_sink,0);*/
-	/*connect(self(),0, copier,0);
-	connect(copier,0, prefilter,0);*/
+	connect(head_source,0, null_sink,0);
+	connect(self(),0, copier,0);
+	connect(copier,0, prefilter,0);
 	//connect(self(),0, prefilter,0);
 	muted = false;
 	}
@@ -136,13 +136,13 @@ void log_dsd::mute() {
 	
 	//disconnect(self(),0, prefilter,0);
 	
-	/*disconnect(self(),0, copier,0);
-	disconnect(copier,0, prefilter,0);*/
-	/*disconnect(head_source,0, null_sink,0);
+	disconnect(self(),0, copier,0);
+	disconnect(copier,0, prefilter,0);
+	disconnect(head_source,0, null_sink,0);
 	
 	connect(head_source,0,prefilter,0);
 	connect(self(),0, null_sink,0);
-	*/muted = true;
+	muted = true;
 	}
 }
 

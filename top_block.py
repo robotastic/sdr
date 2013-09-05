@@ -2,7 +2,7 @@
 ##################################################
 # Gnuradio Python Flow Graph
 # Title: Top Block
-# Generated: Tue Aug 27 22:04:51 2013
+# Generated: Wed Sep  4 20:48:14 2013
 ##################################################
 
 from gnuradio import eng_notation
@@ -27,12 +27,36 @@ class top_block(grc_wxgui.top_block_gui):
 		##################################################
 		# Variables
 		##################################################
-		self.samp_rate = samp_rate = 2000000
-		self.freq = freq = 490000000
+		self.samp_rate = samp_rate = 8000000
+		self.gain = gain = 10
+		self.freq = freq = 857000000
 
 		##################################################
 		# Blocks
 		##################################################
+		_gain_sizer = wx.BoxSizer(wx.VERTICAL)
+		self._gain_text_box = forms.text_box(
+			parent=self.GetWin(),
+			sizer=_gain_sizer,
+			value=self.gain,
+			callback=self.set_gain,
+			label='gain',
+			converter=forms.float_converter(),
+			proportion=0,
+		)
+		self._gain_slider = forms.slider(
+			parent=self.GetWin(),
+			sizer=_gain_sizer,
+			value=self.gain,
+			callback=self.set_gain,
+			minimum=0,
+			maximum=50,
+			num_steps=100,
+			style=wx.SL_HORIZONTAL,
+			cast=float,
+			proportion=1,
+		)
+		self.Add(_gain_sizer)
 		_freq_sizer = wx.BoxSizer(wx.VERTICAL)
 		self._freq_text_box = forms.text_box(
 			parent=self.GetWin(),
@@ -48,8 +72,8 @@ class top_block(grc_wxgui.top_block_gui):
 			sizer=_freq_sizer,
 			value=self.freq,
 			callback=self.set_freq,
-			minimum=488000000,
-			maximum=496000000,
+			minimum=855000000,
+			maximum=860000000,
 			num_steps=100,
 			style=wx.SL_HORIZONTAL,
 			cast=float,
@@ -80,8 +104,8 @@ class top_block(grc_wxgui.top_block_gui):
 		self.osmosdr_source_c_0.set_iq_balance_mode(0, 0)
 		self.osmosdr_source_c_0.set_gain_mode(0, 0)
 		self.osmosdr_source_c_0.set_gain(14, 0)
-		self.osmosdr_source_c_0.set_if_gain(30, 0)
-		self.osmosdr_source_c_0.set_bb_gain(30, 0)
+		self.osmosdr_source_c_0.set_if_gain(gain, 0)
+		self.osmosdr_source_c_0.set_bb_gain(gain, 0)
 		self.osmosdr_source_c_0.set_antenna("", 0)
 		self.osmosdr_source_c_0.set_bandwidth(0, 0)
 		  
@@ -97,18 +121,28 @@ class top_block(grc_wxgui.top_block_gui):
 
 	def set_samp_rate(self, samp_rate):
 		self.samp_rate = samp_rate
-		self.osmosdr_source_c_0.set_sample_rate(self.samp_rate)
 		self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)
+		self.osmosdr_source_c_0.set_sample_rate(self.samp_rate)
+
+	def get_gain(self):
+		return self.gain
+
+	def set_gain(self, gain):
+		self.gain = gain
+		self._gain_slider.set_value(self.gain)
+		self._gain_text_box.set_value(self.gain)
+		self.osmosdr_source_c_0.set_if_gain(self.gain, 0)
+		self.osmosdr_source_c_0.set_bb_gain(self.gain, 0)
 
 	def get_freq(self):
 		return self.freq
 
 	def set_freq(self, freq):
 		self.freq = freq
-		self.osmosdr_source_c_0.set_center_freq(self.freq, 0)
 		self.wxgui_fftsink2_0.set_baseband_freq(self.freq)
 		self._freq_slider.set_value(self.freq)
 		self._freq_text_box.set_value(self.freq)
+		self.osmosdr_source_c_0.set_center_freq(self.freq, 0)
 
 if __name__ == '__main__':
 	parser = OptionParser(option_class=eng_option, usage="%prog: [options]")

@@ -160,9 +160,10 @@ float parse_message(string s) {
 			}
 		
 			
-			cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << loggers.size() << endl;
 	}
 
+	
+	cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
 
 	lastcmd = command;
        
@@ -289,7 +290,6 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(start_correlator, 0, deinterleave, 0);
 	tb->connect(deinterleave, 0, crc, 0);
 
-	rx = make_log_dsd( retfreq, center_freq,address);
 	//tb->lock();
 	tb->connect(src, 0, rx, 0);
 	//log->unmute();

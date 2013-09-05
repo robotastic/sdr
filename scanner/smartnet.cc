@@ -142,7 +142,7 @@ float parse_message(string s) {
 	}
         
 	if (retfreq) {
-		
+			
 			if (rx->get_talkgroup() == address) {
 				tb->lock();
 				if (rx->get_freq() != retfreq) {
@@ -150,8 +150,9 @@ float parse_message(string s) {
 				}
 				rx->unmute();
 				tb->unlock();
-				
+				cout << "[RX] \tTalkgroup: " << address << " \tFreq: " << retfreq << endl;
 			} else {
+				cout << "\tTalkgroup: " << address << " \tFreq: " << retfreq << endl;
 				if (rx->get_freq() == retfreq) {
 					tb->lock();
 					rx->mute();
@@ -162,6 +163,8 @@ float parse_message(string s) {
 			
 	}
 
+	
+	//cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
 
 	lastcmd = command;
        
