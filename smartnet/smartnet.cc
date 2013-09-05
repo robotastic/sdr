@@ -43,7 +43,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "logging_receiver_p25.h"
+#include "logging_receiver_dsd.h"
 #include <smartnet_crc.h>
 #include <smartnet_deinterleave.h>
 
@@ -93,12 +93,11 @@ using namespace std;
 
 int lastcmd = 0;
 double center_freq;
-//log_dsd_sptr log_dsd;
 
 gr_top_block_sptr tb;
 osmosdr_source_c_sptr src;
-//vector<log_dsd_sptr> loggers;
-vector<log_p25_sptr> loggers;
+vector<log_dsd_sptr> loggers;
+//vector<log_p25_sptr> loggers;
 
 float getfreq(int cmd) {
 	float freq;
@@ -141,10 +140,10 @@ float parse_message(string s) {
 	}
         
 	if (retfreq) {
-		//for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {		
-		for(vector<log_p25_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {
-			//log_dsd_sptr rx = *it;
-			log_p25_sptr rx = *it;
+		for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {		
+		//for(vector<log_p25_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {
+			log_dsd_sptr rx = *it;
+			//log_p25_sptr rx = *it;
 						
 			if (rx->get_talkgroup() == address) {
 				//tb->lock();
@@ -163,8 +162,8 @@ float parse_message(string s) {
 			}
 		}
 		if ((!rxfound) && (loggers.size() < 2)) {
-			//log_dsd_sptr log = make_log_dsd( retfreq, center_freq,address);
-			log_p25_sptr log = make_log_p25( retfreq, center_freq,address);
+			log_dsd_sptr log = make_log_dsd( retfreq, center_freq,address);
+			//log_p25_sptr log = make_log_p25( retfreq, center_freq,address);
 						
 			loggers.push_back(log);
 			tb->lock();
@@ -176,13 +175,13 @@ float parse_message(string s) {
 		
 		cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << loggers.size() << endl;
 	}
-/*
+
 	for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end();) {
 		log_dsd_sptr rx = *it;
-*/	
-
+	
+/*
 	for(vector<log_p25_sptr>::iterator it = loggers.begin(); it != loggers.end();) {
-		log_p25_sptr rx = *it;
+		log_p25_sptr rx = *it;*/
 		if (rx->timeout() > 5.0) {
 			cout << "Deleting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
 			
