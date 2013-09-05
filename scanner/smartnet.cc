@@ -42,8 +42,10 @@
 #include <string> 
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 
 #include "audio_receiver_dsd.h"
+#include "talkgroup.h"
 #include <smartnet_crc.h>
 #include <smartnet_deinterleave.h>
 
@@ -54,6 +56,7 @@
 #include <boost/math/constants/constants.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/tokenizer.hpp>
 
 #include <filter/freq_xlating_fir_filter_ccf.h>
 #include <filter/firdes.h>
@@ -78,10 +81,10 @@
 #include <gr_top_block.h>
 #include <gr_multiply_cc.h>
 
-//#include <smartnet_wavsink.h>
-//#include <gr_wavfile_sink.h>
-//#include <blocks/wavfile_sink.h>
-
+#include <ncurses.h>
+#include <fstream> 
+#include <algorithm>    // copy
+#include <iterator> 
 
 
 
@@ -90,6 +93,7 @@
 namespace po = boost::program_options;
 
 using namespace std;
+using namespace boost;
 
 int lastcmd = 0;
 double center_freq;
@@ -112,6 +116,30 @@ float getfreq(int cmd) {
 			}
 	
 	return freq;
+}
+
+void parse_file(string filename) {
+    ifstream in(filename.c_str());
+    if (!in.is_open()) return;
+
+    typedef tokenizer< escaped_list_separator<char> > Tokenizer;
+
+    vector< string > vec;
+    string line;
+
+    while (getline(in,line))
+    {
+        Tokenizer tok(line);
+        vec.assign(tok.begin(),tok.end());
+
+        if (vec.size() < 3) continue;
+
+        copy(vec.begin(), vec.end(),
+             ostream_iterator<string>(cout, "|"));
+
+        cout << "\n----------------------" << endl;
+    }
+
 }
 
 float parse_message(string s) {
@@ -150,9 +178,12 @@ float parse_message(string s) {
 				}
 				rx->unmute();
 				tb->unlock();
-				cout << "[RX] \tTalkgroup: " << address << " \tFreq: " << retfreq << endl;
+				attron(A_BOLD);
+				printw("[RX] \tTalkgroup: %d \tFreq: %g \n", address,  retfreq );
+				attroff(A_BOLD);
 			} else {
-				cout << "\tTalkgroup: " << address << " \tFreq: " << retfreq << endl;
+				printw("\tTalkgroup: %d \tFreq: %g \n", address,  retfreq );
+				
 				if (rx->get_freq() == retfreq) {
 					tb->lock();
 					rx->mute();
@@ -298,6 +329,10 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	cout << "Creating RX - TG: " << tg << endl;
 
 	tb->start();
+	parse_file("../DCFreq.csv");
+	initscr();
+	
+		
 
 	while (1) {
 		if (!queue->empty_p())
@@ -309,13 +344,13 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 			parse_message(sentence);	
 			
 		} else {
-			
+			refresh(); // redraws the ncurses screen
 			boost::this_thread::sleep(boost::posix_time::milliseconds(1.0/10));
 		}
-
+		
 	}
 	
-  
+ 	endwin(); 
 
   // Exit normally.
   return 0;
