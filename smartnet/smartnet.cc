@@ -161,7 +161,7 @@ float parse_message(string s) {
 				}
 			}
 		}
-		if ((!rxfound) && (loggers.size() < 2)) {
+		if ((!rxfound)){ // && (loggers.size() < 2)) {
 			log_dsd_sptr log = make_log_dsd( retfreq, center_freq,address);
 			//log_p25_sptr log = make_log_p25( retfreq, center_freq,address);
 						

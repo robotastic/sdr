@@ -81,7 +81,7 @@ log_dsd::log_dsd(float f, float c, long t)
 
    	std::vector<float> data( a,a + sizeof( a ) / sizeof( a[0] ) );
 	sym_filter = gr_make_fir_filter_fff(1, data); 
-	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1,dsd_MOD_AUTO_SELECT,3,2,0, false);
+	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1,dsd_MOD_AUTO_SELECT,3,0,0, false);
 	null_sink = gr_make_null_sink(sizeof(gr_complex));
 	null_source = gr_make_null_source(sizeof(gr_complex));
 	copier = gr_make_kludge_copy(sizeof(gr_complex));
