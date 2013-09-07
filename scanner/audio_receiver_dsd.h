@@ -41,29 +41,32 @@ class log_dsd;
 
 typedef boost::shared_ptr<log_dsd> log_dsd_sptr;
 
-log_dsd_sptr make_log_dsd(float f, float c, long t);
+log_dsd_sptr make_log_dsd(float f, float c, long t, long r);
 
 class log_dsd : public gr_hier_block2
 {
-  friend log_dsd_sptr make_log_dsd(float f, float c, long t);
+  friend log_dsd_sptr make_log_dsd(float f, float c, long t, long r);
 protected:
-    log_dsd(float f, float c, long t);
+    log_dsd(float f, float c, long t, long r);
 
 public:
     ~log_dsd();
 	void tune_offset(float f);
 	float get_freq();
 	long get_talkgroup();
-	long timeout();
+	void set_talkgroup(long tg);
+	long rx_timeout();
 	void close();
 	void mute();
-	void unmute();	
+	void unmute();
+	void active();	
 	//void forecast(int noutput_items, gr_vector_int &ninput_items_required);
 
 private:
 	float center, freq;
 	bool muted;
 	long talkgroup;
+	double samp_rate;
 	time_t timestamp;
     
 

@@ -1,4 +1,3 @@
-DEC,HEX,Mode,Alpha Tag,Description,Tag,Group
 1616,65,D,DCFD 01 Disp,01 Dispatch,Fire Dispatch,Fire/EMS
 1632,66,D,DCFD 02 Main,02 Main,Fire-Tac,Fire/EMS
 1648,67,D,DCFD 03,03 Fireground 3,Fire-Tac,Fire/EMS

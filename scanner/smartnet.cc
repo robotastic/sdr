@@ -40,7 +40,7 @@
 
 #include <iostream>
 #include <string> 
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdlib.h>
 #include <vector>
 
@@ -82,6 +82,7 @@
 #include <gr_multiply_cc.h>
 
 #include <ncurses.h>
+#include <menu.h>
 #include <fstream> 
 #include <algorithm>    // copy
 #include <iterator> 
@@ -99,12 +100,127 @@ int lastcmd = 0;
 double center_freq;
 int tg;
 
+WINDOW *active_tg_win;
+WINDOW *tg_menu_win;
+WINDOW *status_win;
+MENU *tg_menu;
+
+
 //log_dsd_sptr log_dsd;
 
 gr_top_block_sptr tb;
 osmosdr_source_c_sptr src;
 log_dsd_sptr rx;
-vector<Talkgroup> talkgroups;
+vector<Talkgroup *> talkgroups;
+vector<Talkgroup *> monitored_tg;
+char **menu_choices;
+ITEM **tg_menu_items;
+Talkgroup *active_tg;
+bool is_active;
+
+void update_active_tg_win() {
+	werase(active_tg_win); 
+	box(active_tg_win, 0, 0);
+	if (active_tg == NULL) {
+		mvwprintw(active_tg_win,1,2,"TG: ");
+		
+		mvwprintw(active_tg_win,1,40,"Num: ");
+		mvwprintw(active_tg_win,2,40,"Tag: ");
+		mvwprintw(active_tg_win,2,60,"Group: ");
+	} else {
+		mvwprintw(active_tg_win,1,2,"TG: %s", active_tg->alpha_tag.c_str());
+		mvwprintw(active_tg_win,2,2,"%s ", active_tg->description.c_str());
+		mvwprintw(active_tg_win,1,40,"Num: %5lu", active_tg->number);
+		mvwprintw(active_tg_win,2,40,"Tag: %s", active_tg->tag.c_str());
+		mvwprintw(active_tg_win,2,60,"Group: %s", active_tg->group.c_str());
+	}
+
+	mvwprintw(active_tg_win,5,2,"Monitoring: ");
+	for(std::vector<Talkgroup *>::iterator it = monitored_tg.begin(); it != monitored_tg.end(); ++it) {
+		Talkgroup *tg = (Talkgroup *) *it;	
+		wprintw(active_tg_win, "%s | ", tg->alpha_tag.c_str());
+	}
+
+	wrefresh(active_tg_win);
+
+}
+void update_status_win(char *c) {
+	wclear(status_win);	
+	//wattron(status_win,A_REVERSE);
+	mvwprintw(status_win,0,2,"%s",c);
+	wrefresh(status_win);
+}
+void create_status_win() {
+	int startx, starty, width, height;
+
+	height = 1;
+	width = COLS;
+	starty = LINES-1;
+	startx = 0;
+
+	status_win = newwin(height, width, starty, startx);
+}
+void create_active_tg_win() {
+	int startx, starty, width, height;
+
+	height = 10;
+	width = COLS;
+	starty = 0;
+	startx = 0;
+
+	active_tg_win = newwin(height, width, starty, startx);
+	box(active_tg_win, 0, 0);
+
+	wrefresh(active_tg_win);
+}
+
+void create_tg_menu() {
+	std::string s;
+	int n_choices, i;
+ 	char *c;
+
+       	//printw("%s\n", s.c_str());
+	menu_choices = new char*[talkgroups.size()];
+	//menu_choices = malloc(talkgroups.size(), sizeof(char *));
+	i=0;	
+	for(std::vector<Talkgroup *>::iterator it = talkgroups.begin(); it != talkgroups.end(); ++it) {
+		
+		Talkgroup *tg = (Talkgroup *) *it;		
+		s = tg->menu_string();
+		c = (char *) malloc((s.size() + 1) * sizeof(char));
+		//strncpy(c, s.c_str(), s.size());
+    		//c[s.size()] = '\0';
+		strcpy(c, s.c_str());			
+		menu_choices[i] = c;
+		i++;
+	}
+
+	n_choices = talkgroups.size(); //ARRAY_SIZE(menu_choices);
+	tg_menu_items = (ITEM **) calloc(n_choices + 1, sizeof(ITEM *));
+		
+	
+	for (i=0; i < n_choices; ++i) {
+		tg_menu_items[i] = new_item(menu_choices[i], menu_choices[i]);
+		set_item_userptr(tg_menu_items[i], (void *) talkgroups[i]);
+	}
+
+	tg_menu = new_menu((ITEM **) tg_menu_items);
+
+	tg_menu_win = newwin(LINES - 11, COLS, 10, 0);
+	keypad(tg_menu_win, TRUE);
+	
+		 
+	set_menu_win(tg_menu, tg_menu_win);
+	set_menu_sub(tg_menu, derwin(tg_menu_win, LINES - 15, COLS - 4, 2, 2));	
+	set_menu_format(tg_menu, LINES - 14 , 1);
+	//set_menu_mark(tg_menu, " * ");
+	box(tg_menu_win,0,0);	
+	menu_opts_off(tg_menu, O_SHOWDESC | O_ONEVALUE);
+	//menu_opts_off(tg_menu, O_ONEVALUE);
+
+	post_menu(tg_menu);
+		 
+}
 
 float getfreq(int cmd) {
 	float freq;
@@ -123,27 +239,29 @@ void parse_file(string filename) {
     ifstream in(filename.c_str());
     if (!in.is_open()) return;
 
-    typedef tokenizer< escaped_list_separator<char> > Tokenizer;
+	boost::char_separator<char> sep(",");
+	typedef boost::tokenizer< boost::char_separator<char> > t_tokenizer;
 
     vector< string > vec;
     string line;
-Talkgroup *tg;
+
 
     while (getline(in,line))
     {
-        Tokenizer tok(line);
+	
+	t_tokenizer tok(line, sep);
+	//Tokenizer tok(line);
         vec.assign(tok.begin(),tok.end());
 
         if (vec.size() < 7) continue;
 
-	tg = new Talkgroup(atoi( vec[0].c_str()), vec[2].at(0),vec[3].c_str(),vec[4].c_str(),vec[5].c_str() ,vec[6].c_str());
+	Talkgroup *tg = new Talkgroup(atoi( vec[0].c_str()), vec[2].at(0),vec[3].c_str(),vec[4].c_str(),vec[5].c_str() ,vec[6].c_str());
 
-	talkgroups.push_back(*tg);
-       
-	printf(" %s | %s | %s | %s | %s | %s | %s ",vec[0].c_str(), vec[1].c_str(),vec[2].c_str(),vec[3].c_str(),vec[4].c_str(),vec[5].c_str() ,vec[6].c_str());
-        printf("\n----------------------\n");
+	talkgroups.push_back(tg);
+
+	
     }
-
+	
 }
 
 float parse_message(string s) {
@@ -174,30 +292,59 @@ float parse_message(string s) {
 	}
         
 	if (retfreq) {
-			
-			if (rx->get_talkgroup() == address) {
-				tb->lock();
-				if (rx->get_freq() != retfreq) {
+		char c[100];
+		
+		if (!is_active) {
+			for(std::vector<Talkgroup *>::iterator it = monitored_tg.begin(); it != monitored_tg.end(); ++it) {
+				Talkgroup *target = (Talkgroup *) *it;
+				if (target->number == address) {
+					tb->lock();
 					rx->tune_offset(retfreq);
-				}
-				rx->unmute();
-				tb->unlock();
-				attron(A_BOLD);
-				printf("[RX] \tTalkgroup: %d \tFreq: %g \n", address,  retfreq );
-				attroff(A_BOLD);
-			} else {
-				printf("\tTalkgroup: %d \tFreq: %g \n", address,  retfreq );
+					rx->set_talkgroup(address);
+					rx->unmute();
+					tb->unlock();
+					active_tg = target;
+					is_active = true;
+					break;
+				}		
+			}
+
+		} else {	
+			if (rx->get_talkgroup() == address) {
 				
+				if (rx->get_freq() != retfreq) {
+					tb->lock();
+					rx->tune_offset(retfreq);
+					rx->unmute();
+					tb->unlock();
+				}
+				rx->active();
+
+			} else {				
 				if (rx->get_freq() == retfreq) {
 					tb->lock();
 					rx->mute();
 					tb->unlock();
+					is_active = false;
+					active_tg = NULL;
 				}
 			}
-		
-			
+		}		
+		sprintf(c,"RX - Talkgroup: %5d Freq: %5g", address,retfreq);
+		update_status_win(c);
+		update_active_tg_win();	
 	}
 
+	if ((is_active) && (rx->rx_timeout() > 5.0)) {
+	
+			
+			tb->lock();
+			rx->mute();
+			tb->unlock();
+			is_active = false;
+			active_tg = NULL;
+			update_active_tg_win();
+	}
 	
 	//cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
 
@@ -309,7 +456,7 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 
 	smartnet_crc_sptr crc = smartnet_make_crc(queue);
 
-	rx = make_log_dsd( chan_freq, center_freq,tg);
+	rx = make_log_dsd( chan_freq, center_freq,tg, samp_rate);
 
   	//audio_sink::sptr sink = audio_make_sink(44100);
 
@@ -326,18 +473,28 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 	tb->connect(start_correlator, 0, deinterleave, 0);
 	tb->connect(deinterleave, 0, crc, 0);
 
-	//tb->lock();
 	tb->connect(src, 0, rx, 0);
-	//log->unmute();
-	//tb->unlock();
-	cout << "Creating RX - TG: " << tg << endl;
-
-	tb->start();
-	//initscr();
-	parse_file("../DCFreq.csv");
-
 	
-		
+
+	is_active = false;
+	active_tg = NULL;	
+	tb->start();
+	initscr();
+	cbreak();
+	noecho();
+	nodelay(tg_menu_win,TRUE);
+	
+	parse_file("ChanList.csv");
+	create_status_win();
+	create_active_tg_win();
+	update_active_tg_win();
+	
+	create_tg_menu();
+	wrefresh(tg_menu_win);
+	update_status_win("Initialized...");
+	int c;	
+
+
 
 	while (1) {
 		if (!queue->empty_p())
@@ -346,12 +503,64 @@ gr_correlate_access_code_tag_bb_sptr start_correlator = gr_make_correlate_access
 			gr_message_sptr msg;
 			msg = queue->delete_head();
 			sentence = msg->to_string();
-			parse_message(sentence);	
-			
+			parse_message(sentence);
 		} else {
-			//refresh(); // redraws the ncurses screen
+			
 			boost::this_thread::sleep(boost::posix_time::milliseconds(1.0/10));
 		}
+		wtimeout(tg_menu_win, 0);
+		c = wgetch(tg_menu_win);
+		switch(c)
+		{
+			
+			case KEY_DOWN:
+				menu_driver(tg_menu, REQ_DOWN_ITEM);
+				wrefresh(tg_menu_win);
+				break;
+			case KEY_UP:
+				menu_driver(tg_menu, REQ_UP_ITEM);
+				wrefresh(tg_menu_win);				
+				break;
+			case KEY_LEFT:
+				menu_driver(tg_menu, REQ_LEFT_ITEM);
+				wrefresh(tg_menu_win);
+				break;
+			case KEY_RIGHT:
+				menu_driver(tg_menu, REQ_RIGHT_ITEM);
+				wrefresh(tg_menu_win);
+				break;
+			case KEY_NPAGE:
+				menu_driver(tg_menu, REQ_SCR_DPAGE);
+				wrefresh(tg_menu_win);
+				break;
+			case KEY_PPAGE:
+				menu_driver(tg_menu, REQ_SCR_UPAGE);
+				wrefresh(tg_menu_win);
+				break;
+			case ' ':
+				ITEM **items;
+				Talkgroup *tg;
+
+
+				menu_driver(tg_menu, REQ_TOGGLE_ITEM);
+
+				monitored_tg.clear();
+				items = menu_items(tg_menu);
+				
+				for(int i = 0; i < item_count(tg_menu); ++i)
+					if(item_value(items[i]) == TRUE)
+					{	
+						tg = (Talkgroup *) item_userptr(items[i]);;
+						monitored_tg.push_back(tg);
+					}
+				
+				wrefresh(tg_menu_win);
+				update_active_tg_win();
+				break;
+		}
+
+		
+		
 		
 	}
 	

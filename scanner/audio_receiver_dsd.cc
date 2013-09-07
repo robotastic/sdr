@@ -1,9 +1,9 @@
 
 #include "audio_receiver_dsd.h"
 
-log_dsd_sptr make_log_dsd(float freq, float center, long t)
+log_dsd_sptr make_log_dsd(float freq, float center, long t, long rate)
 {
-    return gnuradio::get_initial_sptr(new log_dsd(freq, center, t));
+    return gnuradio::get_initial_sptr(new log_dsd(freq, center, t, rate));
 }
 unsigned GCD(unsigned u, unsigned v) {
     while ( v != 0) {
@@ -30,7 +30,7 @@ std::vector<float> design_filter(double interpolation, double deci) {
 
 	return result;
 }
-log_dsd::log_dsd(float f, float c, long t)
+log_dsd::log_dsd(float f, float c, long t, long r)
     : gr_hier_block2 ("log_dsd",
           gr_make_io_signature  (1, 1, sizeof(gr_complex)),
           gr_make_io_signature  (0, 0, sizeof(float)))
@@ -38,11 +38,11 @@ log_dsd::log_dsd(float f, float c, long t)
 	freq = f;
 	center = c;
 	talkgroup = t;
+	samp_rate = r;
 	float offset = center - (f*1000000);
 	char filename[160];
 	int samp_per_sym = 10;
-	double samp_rate = 8000000;
-	int decim = 160;
+	int decim = int(samp_rate/50000);
 	float xlate_bandwidth = 14000; //24260.0;
 	float channel_rate = 4800 * samp_per_sym;
 	double pre_channel_rate = double(samp_rate/decim);
@@ -81,7 +81,7 @@ log_dsd::log_dsd(float f, float c, long t)
 
    	std::vector<float> data( a,a + sizeof( a ) / sizeof( a[0] ) );
 	sym_filter = gr_make_fir_filter_fff(1, data); 
-	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1,dsd_MOD_AUTO_SELECT,3,2,0, true);
+	dsd = dsd_make_block_ff(dsd_FRAME_P25_PHASE_1,dsd_MOD_AUTO_SELECT,3,0,0, true);
 	null_sink = gr_make_null_sink(sizeof(gr_complex));
 	null_source = gr_make_null_source(sizeof(gr_complex));
 	copier = gr_make_kludge_copy(sizeof(gr_complex));
@@ -114,6 +114,11 @@ log_dsd::log_dsd(float f, float c, long t)
 log_dsd::~log_dsd() {
 
 }
+
+void log_dsd::active() {
+	timestamp = time(NULL);
+}
+
 // from: /gnuradio/grc/grc_gnuradio/blks2/selector.py
 void log_dsd::unmute() {
 	// this function gets called everytime their is a TG continuation command. This keeps the timestamp updated.
@@ -150,11 +155,15 @@ long log_dsd::get_talkgroup() {
 	return talkgroup;
 }
 
+void log_dsd::set_talkgroup(long tg) {
+	talkgroup = tg;
+}
+
 float log_dsd::get_freq() {
 	return freq;
 }
 
-long log_dsd::timeout() {
+long log_dsd::rx_timeout() {
 	return time(NULL) - timestamp;
 }
 
@@ -172,7 +181,7 @@ void log_dsd::forecast(int noutput_items, gr_vector_int &ninput_items_required) 
 void log_dsd::tune_offset(float f) {
 	freq = f;
 	prefilter->set_center_freq(center - (f*1000000));
-	std::cout << "Offset set to: " << (f*1000000-center) << std::endl;
+	//std::cout << "Offset set to: " << (f*1000000-center) << std::endl;
 }
 	
 
