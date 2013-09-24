@@ -57,6 +57,7 @@ public:
 	void close();
 	void mute();
 	void unmute();	
+	char *get_filename();
 	//void forecast(int noutput_items, gr_vector_int &ninput_items_required);
 
 private:
@@ -64,6 +65,7 @@ private:
 	bool muted;
 	long talkgroup;
 	time_t timestamp;
+	char filename[160];
     
 
     /* GR blocks */

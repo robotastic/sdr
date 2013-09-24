@@ -301,7 +301,7 @@ float parse_message(string s) {
 					tb->lock();
 					rx->tune_offset(retfreq);
 					rx->set_talkgroup(address);
-					rx->unmute();
+					//rx->unmute();
 					tb->unlock();
 					active_tg = target;
 					is_active = true;
@@ -313,18 +313,18 @@ float parse_message(string s) {
 			if (rx->get_talkgroup() == address) {
 				
 				if (rx->get_freq() != retfreq) {
-					tb->lock();
+					//tb->lock();
 					rx->tune_offset(retfreq);
-					rx->unmute();
-					tb->unlock();
+					//rx->unmute();
+					//tb->unlock();
 				}
 				rx->active();
 
 			} else {				
 				if (rx->get_freq() == retfreq) {
-					tb->lock();
+					/*tb->lock();
 					rx->mute();
-					tb->unlock();
+					tb->unlock();*/
 					is_active = false;
 					active_tg = NULL;
 				}
@@ -338,9 +338,9 @@ float parse_message(string s) {
 	if ((is_active) && (rx->rx_timeout() > 5.0)) {
 	
 			
-			tb->lock();
+			/*tb->lock();
 			rx->mute();
-			tb->unlock();
+			tb->unlock();*/
 			is_active = false;
 			active_tg = NULL;
 			update_active_tg_win();

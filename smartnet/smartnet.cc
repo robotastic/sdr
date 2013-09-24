@@ -44,8 +44,8 @@
 #include <stdlib.h>
 
 #include "logging_receiver_dsd.h"
-#include <smartnet_crc.h>
-#include <smartnet_deinterleave.h>
+#include "smartnet_crc.h"
+#include "smartnet_deinterleave.h"
 
 #include <osmosdr_source_c.h>
 #include <osmosdr_sink_c.h>
@@ -121,7 +121,7 @@ float parse_message(string s) {
 	int address = atoi( x[0].c_str() ) & 0xFFF0;
 	int groupflag = atoi( x[1].c_str() );
 	int command = atoi( x[2].c_str() );
-	
+	char shell_command[200];
 	
             
         if (command < 0x2d0) {
@@ -189,7 +189,8 @@ float parse_message(string s) {
 			rx->close();
 			tb->disconnect(src, 0, rx, 0);
 			tb->unlock();
-			
+			sprintf(shell_command,"lame -h %s", rx->get_filename());
+			system(shell_command);
 			it = loggers.erase(it);
 
 		} else {

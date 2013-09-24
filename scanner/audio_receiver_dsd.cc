@@ -89,23 +89,25 @@ log_dsd::log_dsd(float f, float c, long t, long r)
 	sprintf(filename, "%ld-%ld.wav", talkgroup,timestamp);
 	audio_sink::sptr sink = audio_make_sink(44100);
 	
-	//connect(self(), 0, prefilter, 0);
 	
 
 	//start off muted	
-
-	connect(self(), 0, null_sink, 0);
+	connect(self(), 0, prefilter, 0);
+	//connect(self(), 0, null_sink, 0);
 	connect(null_source,0,head_source,0);
-	connect(head_source,0,prefilter,0);
+	//connect(head_source,0,prefilter,0);
+	connect(head_source,0, null_sink,0);
+
+
 	muted  = true;
 
 	connect(prefilter, 0, downsample_sig, 0);
 	connect(downsample_sig, 0, demod, 0);
 	connect(demod, 0, sym_filter, 0);
 	connect(sym_filter, 0, dsd, 0);
-	//connect(dsd, 0, wav_sink,0);
 		
-	
+	//connect(dsd,0, null_sink,0);
+	//connect(head_source,0, upsample_audio,0);
 	connect(dsd, 0, upsample_audio,0);
 	connect(upsample_audio, 0, sink,0);
 	//connect(sym_filter,0,fs,0);	
@@ -130,7 +132,12 @@ void log_dsd::unmute() {
 	connect(head_source,0, null_sink,0);
 	connect(self(),0, copier,0);
 	connect(copier,0, prefilter,0);
-	//connect(self(),0, prefilter,0);
+	/*disconnect(dsd,0, null_sink,0);
+	disconnect(head_source,0, upsample_audio,0);
+	connect(head_source,0, null_sink,0);
+	connect(dsd(),0, copier,0);
+	connect(copier,0, upsample_audio,0);*/
+		
 	muted = false;
 	}
 }
@@ -138,8 +145,13 @@ void log_dsd::unmute() {
 void log_dsd::mute() {
 
 	if (!muted) {
+	/*disconnect(dsd,0, copier,0);
+	disconnect(copier,0, upsample_audio,0);
+	disconnect(head_source,0, null_sink,0);
 	
-	//disconnect(self(),0, prefilter,0);
+	connect(head_source,0,upsample_audio,0);
+	connect(self(),0, null_sink,0);
+	*/
 	
 	disconnect(self(),0, copier,0);
 	disconnect(copier,0, prefilter,0);

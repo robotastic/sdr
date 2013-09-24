@@ -39,7 +39,7 @@ log_dsd::log_dsd(float f, float c, long t)
 	center = c;
 	talkgroup = t;
 	float offset = center - (f*1000000);
-	char filename[160];
+	
 	int samp_per_sym = 10;
 	double samp_rate = 4000000;
 	int decim = 80;
@@ -154,6 +154,10 @@ long log_dsd::get_talkgroup() {
 
 float log_dsd::get_freq() {
 	return freq;
+}
+
+char *log_dsd::get_filename() {
+	return filename;
 }
 
 long log_dsd::timeout() {

@@ -124,6 +124,7 @@ link_directories(
 	/usr/local/lib/pyton2.7/dist-packages/gnuradio/
 )
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 
 add_executable(smartnet smartnet.cc smartnet_crc.cc smartnet_deinterleave.cc logging_receiver_dsd.cc logging_receiver_p25.cc smartnet_wavfile.cc smartnet_wavsink.cc)
 target_link_libraries(smartnet  gnuradio-core gnuradio-audio gnuradio-blocks gnuradio-osmosdr gnuradio-filter gnuradio-digital gnuradio-analog ${GRUEL_LIBRARIES} ${Boost_LIBRARIES} gr-dsd op25 itpp)
