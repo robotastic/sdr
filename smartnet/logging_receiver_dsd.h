@@ -54,6 +54,7 @@ public:
 	float get_freq();
 	long get_talkgroup();
 	long timeout();
+	long elapsed();
 	void close();
 	void mute();
 	void unmute();	
@@ -65,6 +66,7 @@ private:
 	bool muted;
 	long talkgroup;
 	time_t timestamp;
+	time_t starttime;
 	char filename[160];
     
 

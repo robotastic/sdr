@@ -50,7 +50,7 @@ log_dsd::log_dsd(float f, float c, long t)
 	double audio_rate = 44100;
 
 	timestamp = time(NULL);
-
+	starttime = time(NULL);
 
 
 
@@ -95,9 +95,10 @@ log_dsd::log_dsd(float f, float c, long t)
 
 	//start off muted	
 /*
-	connect(self(), 0, null_sink, 0);
-	connect(null_source,0,head_source,0);
-	connect(head_source,0,prefilter,0);*/
+	connect(self(), 0, null_sink, 0);*/
+	//connect(null_source,0,head_source,0);
+	//connect(head_source,0, null_sink,0);
+	/*connect(head_source,0,prefilter,0);*/
 	muted  = true;
 
 	connect(prefilter, 0, downsample_sig, 0);
@@ -164,9 +165,23 @@ long log_dsd::timeout() {
 	return time(NULL) - timestamp;
 }
 
+long log_dsd::elapsed() {
+	return time(NULL) - starttime;
+}
+
 void log_dsd::close() {
-	mute();
-	wav_sink->close();	
+	//disconnect(self(),0, copier,0);
+	//disconnect(copier,0, prefilter,0);
+	/*disconnect(head_source,0, null_sink,0);
+	
+	connect(head_source,0,prefilter,0);
+	connect(self(),0, null_sink,0);*/
+	//disconnect(sym_filter, 0, dsd, 0);
+	//disconnect(dsd, 0, wav_sink,0);
+	std::cout<< "Muted, clearing DSD" <<std::endl;
+	//dsd->close();	
+	wav_sink->close();
+	std::cout<< "LOG_DSD - Closed" <<std::endl;	
 }
 
 /*
@@ -178,7 +193,7 @@ void log_dsd::forecast(int noutput_items, gr_vector_int &ninput_items_required) 
 void log_dsd::tune_offset(float f) {
 	freq = f;
 	prefilter->set_center_freq(center - (f*1000000));
-	std::cout << "Offset set to: " << (f*1000000-center) << std::endl;
+	std::cout << "Offset set to: " << (center - f*1000000) << "Freq: "  << f << std::endl;
 }
 	
 

@@ -85,11 +85,14 @@
 
 
 
-
-
 namespace po = boost::program_options;
 
 using namespace std;
+
+
+   
+
+
 
 int lastcmd = 0;
 double center_freq;
@@ -111,7 +114,19 @@ float getfreq(int cmd) {
 	
 	return freq;
 }
-
+void parse_status(int command, int address, int groupflag) {
+	    int Value = address << 1 | (groupflag ? (1) : 0);
+            int GroupTimeout = Value & (0x1f);
+            Value >>= 5;
+            int ConnecTimeout = Value & (0x1f);
+            Value >>= 5;
+            int DispatchTimeout = Value & 0xf;
+            Value >>= 4;
+            int Power = Value & 1;
+            Value >>= 1;
+            int OpCode = Value;
+            cout << "Status : " << OpCode << "\tPower: " << Power << "\tDispatchTimeout: " << DispatchTimeout << "\tConnectTimeOut: " << ConnecTimeout << "\tGroupTimeOut:" << GroupTimeout <<endl;
+}
 float parse_message(string s) {
 	float retfreq = 0;
 	bool rxfound = false;
@@ -122,7 +137,8 @@ float parse_message(string s) {
 	int groupflag = atoi( x[1].c_str() );
 	int command = atoi( x[2].c_str() );
 	char shell_command[200];
-	
+	int timeout = 0;
+	int elapsed = 0;
             
         if (command < 0x2d0) {
 
@@ -138,6 +154,10 @@ float parse_message(string s) {
 			}
 		}
 	}
+
+	if (command == 0x03c0) {
+		//parse_status(command, address, groupflag);
+	}
         
 	if (retfreq) {
 		for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {		
@@ -147,6 +167,8 @@ float parse_message(string s) {
 						
 			if (rx->get_talkgroup() == address) {
 				//tb->lock();
+				timeout = rx->timeout();
+				elapsed = rx->elapsed();
 				if (rx->get_freq() != retfreq) {
 					rx->tune_offset(retfreq);
 				}
@@ -156,6 +178,7 @@ float parse_message(string s) {
 			} else {
 				if (rx->get_freq() == retfreq) {
 					//tb->lock();
+					cout << "  !! Someone else is on my Channel - My TG: "<< rx->get_talkgroup() << " Freq: " <<rx->get_freq() << " Intruding TG: " << address << endl;
 					rx->mute();
 					//tb->unlock();
 				}
@@ -170,10 +193,10 @@ float parse_message(string s) {
 			tb->connect(src, 0, log, 0);
 			log->unmute();
 			tb->unlock();
-			cout << "Creating Logger - TG: " << address << "\t Freq: " << retfreq << endl;
+			cout << "Creating Logger - TG: " << address << "\t Freq: " << retfreq << "\tCmd: " <<command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << endl;
 		}
 		
-		cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << loggers.size() << endl;
+		cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << loggers.size() << "\tCmd: "<< command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << "\t Timeout: " << timeout << "\t Elapsed: " << elapsed << endl;
 	}
 
 	for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end();) {
@@ -186,12 +209,17 @@ float parse_message(string s) {
 			cout << "Deleting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
 			
 			tb->lock();
-			rx->close();
+			//rx->stop();
+			rx->close();			
 			tb->disconnect(src, 0, rx, 0);
 			tb->unlock();
-			sprintf(shell_command,"lame -h %s", rx->get_filename());
+			/*sprintf(shell_command,"lame -h %s", rx->get_filename());
+			system(shell_command);*/
+			sprintf(shell_command,"scp %s luke@li178-232.members.linode.com:~/smartnet-upload&", rx->get_filename());
 			system(shell_command);
+			
 			it = loggers.erase(it);
+			cout << "Erased Logger" << endl;
 
 		} else {
 			++it;
