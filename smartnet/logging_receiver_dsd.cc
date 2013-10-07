@@ -115,6 +115,7 @@ log_dsd::log_dsd(float f, float c, long t)
 }
 
 log_dsd::~log_dsd() {
+std::cout<< "logging_receiver_dsd.cc: destructor" <<std::endl;
 
 }
 // from: /gnuradio/grc/grc_gnuradio/blks2/selector.py
@@ -176,12 +177,26 @@ void log_dsd::close() {
 	
 	connect(head_source,0,prefilter,0);
 	connect(self(),0, null_sink,0);*/
-	//disconnect(sym_filter, 0, dsd, 0);
-	//disconnect(dsd, 0, wav_sink,0);
-	std::cout<< "Muted, clearing DSD" <<std::endl;
-	//dsd->close();	
+	std::cout<< "logging_receiver_dsd.cc: close()" <<std::endl;
 	wav_sink->close();
-	std::cout<< "LOG_DSD - Closed" <<std::endl;	
+
+	disconnect(self(), 0, prefilter, 0);	
+	disconnect(prefilter, 0, downsample_sig, 0);
+	disconnect(downsample_sig, 0, demod, 0);
+	disconnect(demod, 0, sym_filter, 0);
+	disconnect(sym_filter, 0, dsd, 0);
+	disconnect(dsd, 0, wav_sink,0);
+//dsd->close();
+/*
+	sym_filter.reset(); 
+	dsd.reset(); 
+	null_sink.reset(); 
+	null_source.reset(); 
+	copier.reset(); 
+	head_source.reset();
+	wav_sink.reset();
+		*/
+	std::cout<< "logging_receiver_dsd.cc: finished close()" <<std::endl;
 }
 
 /*

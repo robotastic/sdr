@@ -57,7 +57,7 @@
 
 #include <filter/freq_xlating_fir_filter_ccf.h>
 #include <filter/firdes.h>
-
+//#include <mcheck.h>
 #include <digital_fll_band_edge_cc.h>
 #include <digital_clock_recovery_mm_ff.h>
 #include <digital_binary_slicer_fb.h>
@@ -206,20 +206,25 @@ float parse_message(string s) {
 	for(vector<log_p25_sptr>::iterator it = loggers.begin(); it != loggers.end();) {
 		log_p25_sptr rx = *it;*/
 		if (rx->timeout() > 5.0) {
-			cout << "Deleting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
+			cout << "smartnet.cc: Deleting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
 			
 			tb->lock();
+			//tb->stop();
+			//tb->wait();
+			cout << "smartnet.cc: just locked " << endl;
 			//rx->stop();
 			rx->close();			
 			tb->disconnect(src, 0, rx, 0);
+			cout << "smartnet.cc: about to unlock" << endl;
+			//tb->start();
 			tb->unlock();
 			/*sprintf(shell_command,"lame -h %s", rx->get_filename());
 			system(shell_command);*/
 			sprintf(shell_command,"scp %s luke@li178-232.members.linode.com:~/smartnet-upload&", rx->get_filename());
 			system(shell_command);
-			
+			cout << "smartnet.cc: About to erased Logger - " << endl;
 			it = loggers.erase(it);
-			cout << "Erased Logger" << endl;
+			
 
 		} else {
 			++it;
@@ -250,6 +255,8 @@ float parse_message(string s) {
 
 int main(int argc, char **argv)
 {
+//mtrace();
+
 std::string device_addr;
     double  samp_rate, chan_freq, error;
 	int if_gain, bb_gain, rf_gain;
