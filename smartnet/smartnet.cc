@@ -57,7 +57,7 @@
 
 #include <filter/freq_xlating_fir_filter_ccf.h>
 #include <filter/firdes.h>
-//#include <mcheck.h>
+
 #include <digital_fll_band_edge_cc.h>
 #include <digital_clock_recovery_mm_ff.h>
 #include <digital_binary_slicer_fb.h>
@@ -78,9 +78,6 @@
 #include <gr_top_block.h>
 #include <gr_multiply_cc.h>
 
-//#include <smartnet_wavsink.h>
-//#include <gr_wavfile_sink.h>
-//#include <blocks/wavfile_sink.h>
 
 
 
@@ -100,7 +97,16 @@ double center_freq;
 gr_top_block_sptr tb;
 osmosdr_source_c_sptr src;
 vector<log_dsd_sptr> loggers;
-//vector<log_p25_sptr> loggers;
+vector<log_dsd_sptr> active_loggers;
+
+
+void init_loggers(int num, float center_freq) {
+	for (int i = 0; i < num; i++) {
+		log_dsd_sptr log = make_log_dsd( center_freq, center_freq, 0, i);			
+		loggers.push_back(log);
+ 	}
+
+}
 
 float getfreq(int cmd) {
 	float freq;
@@ -160,93 +166,78 @@ float parse_message(string s) {
 	}
         
 	if (retfreq) {
-		for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {		
-		//for(vector<log_p25_sptr>::iterator it = loggers.begin(); it != loggers.end(); ++it) {
+		for(vector<log_dsd_sptr>::iterator it = active_loggers.begin(); it != active_loggers.end(); ++it) {		
+		
 			log_dsd_sptr rx = *it;
-			//log_p25_sptr rx = *it;
+			
 						
 			if (rx->get_talkgroup() == address) {
-				//tb->lock();
+				
 				timeout = rx->timeout();
 				elapsed = rx->elapsed();
 				if (rx->get_freq() != retfreq) {
 					rx->tune_offset(retfreq);
 				}
 				rx->unmute();
-				//tb->unlock();
+				
 				rxfound = true;
 			} else {
 				if (rx->get_freq() == retfreq) {
-					//tb->lock();
+					
 					cout << "  !! Someone else is on my Channel - My TG: "<< rx->get_talkgroup() << " Freq: " <<rx->get_freq() << " Intruding TG: " << address << endl;
 					rx->mute();
-					//tb->unlock();
+					
 				}
 			}
 		}
-		if ((!rxfound)){ // && (loggers.size() < 2)) {
-			cout << "Creating Logger - TG: " << address << "\t Freq: " << retfreq << "\tCmd: " <<command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << endl;
-			log_dsd_sptr log = make_log_dsd( retfreq, center_freq,address);
-			//log_p25_sptr log = make_log_p25( retfreq, center_freq,address);
+		if ((!rxfound)){ 
+			cout << "smartnet.cc: Activating Logger - TG: " << address << "\t Freq: " << retfreq << "\tCmd: " <<command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << endl;
+
+			log_dsd_sptr log = loggers.front();
+			active_loggers.push_back(move(log));
+			loggers.erase(loggers.begin());
+			cout << "smartnet.cc: Moved Logger, Loggers " << loggers.size() << " Active Loggers " << active_loggers.size() << endl;
+			
 						
-			loggers.push_back(log);
+			
 			tb->lock();
 			tb->connect(src, 0, log, 0);
-			log->unmute();
+			log->activate(retfreq, address);
 			tb->unlock();
-			cout << "Created logger & unlocked" << endl;
-
+			cout << "smartnet.cc: Activated logger & unlocked" << endl;
 		}
 		
-		cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << loggers.size() << "\tCmd: "<< command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << "\t Timeout: " << timeout << "\t Elapsed: " << elapsed << endl;
+		cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << active_loggers.size() << "\tCmd: "<< command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << "\t Timeout: " << timeout << "\t Elapsed: " << elapsed << endl;
 	}
 
-	for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end();) {
+	for(vector<log_dsd_sptr>::iterator it = active_loggers.begin(); it != active_loggers.end();) {
 		log_dsd_sptr rx = *it;
 	
-/*
-	for(vector<log_p25_sptr>::iterator it = loggers.begin(); it != loggers.end();) {
-		log_p25_sptr rx = *it;*/
+
 		if (rx->timeout() > 5.0) {
 			cout << "smartnet.cc: Deleting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
 			
 			tb->lock();
-			//tb->stop();
-			//tb->wait();
-			cout << "smartnet.cc: just locked " << endl;
-			//rx->stop();
-			rx->close();			
 			tb->disconnect(src, 0, rx, 0);
-			cout << "smartnet.cc: about to unlock" << endl;
-			//tb->start();
+			rx->deactivate();
 			tb->unlock();
-			/*sprintf(shell_command,"lame -h %s", rx->get_filename());
-			system(shell_command);*/
+			
+						
+			
+			
+			loggers.push_back(move(rx));
+			it = active_loggers.erase(it);
+			
+			cout << "smartnet.cc: Moved Active Logger, Loggers " << loggers.size() << " Active Loggers " << active_loggers.size() << endl;
+			
 			sprintf(shell_command,"scp %s luke@li178-232.members.linode.com:~/smartnet-upload&", rx->get_filename());
 			system(shell_command);
-			cout << "smartnet.cc: About to erased Logger - " << endl;
-			it = loggers.erase(it);
 			
 
 		} else {
 			++it;
 		}
 	}
-/*
-	for(vector<log_dsd_sptr>::iterator it = loggers.begin(); it != loggers.end();++it) {
-		log_dsd_sptr rx = *it;
-		if (rx->timeout() > 10.0) {
-			//cout << "Muting Logger - TG: " << rx->get_talkgroup() << "\t Freq: " << rx->get_freq() << endl;
-			
-			tb->lock();
-			rx->mute();
-			tb->unlock();
-			
-
-		} 
-	}*/
-
-	//cout << "Command: " << command << " Address: " << address << "\t GroupFlag: " << groupflag << " Freq: " << retfreq << endl;
 
 	lastcmd = command;
        
@@ -257,7 +248,6 @@ float parse_message(string s) {
 
 int main(int argc, char **argv)
 {
-//mtrace();
 
 std::string device_addr;
     double  samp_rate, chan_freq, error;
@@ -329,6 +319,8 @@ std::string device_addr;
 	cout << "Decim: " << decim << endl;
 	cout << "Samples per symbol: " << sps << endl;
 */
+
+	init_loggers(10, center_freq);
 	gr_msg_queue_sptr queue = gr_make_msg_queue();
 
 

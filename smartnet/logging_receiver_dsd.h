@@ -40,17 +40,19 @@ class log_dsd;
 
 typedef boost::shared_ptr<log_dsd> log_dsd_sptr;
 
-log_dsd_sptr make_log_dsd(float f, float c, long t);
+log_dsd_sptr make_log_dsd(float f, float c, long t, int n);
 
 class log_dsd : public gr_hier_block2
 {
-  friend log_dsd_sptr make_log_dsd(float f, float c, long t);
+  friend log_dsd_sptr make_log_dsd(float f, float c, long t, int n);
 protected:
-    log_dsd(float f, float c, long t);
+    log_dsd(float f, float c, long t, int n);
 
 public:
     ~log_dsd();
 	void tune_offset(float f);
+	void activate(float f, int talkgroup);
+	void deactivate();
 	float get_freq();
 	long get_talkgroup();
 	long timeout();
@@ -68,6 +70,7 @@ private:
 	time_t timestamp;
 	time_t starttime;
 	char filename[160];
+	int num;
     
 
     /* GR blocks */
