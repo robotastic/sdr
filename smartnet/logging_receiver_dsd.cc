@@ -189,13 +189,13 @@ void log_dsd::close() {
 //dsd->close();
 /*
 	sym_filter.reset(); 
-	dsd.reset(); 
+	//dsd.reset(); 
 	null_sink.reset(); 
 	null_source.reset(); 
 	copier.reset(); 
 	head_source.reset();
 	wav_sink.reset();
-		*/
+*/		
 	std::cout<< "logging_receiver_dsd.cc: finished close()" <<std::endl;
 }
 

@@ -185,6 +185,7 @@ float parse_message(string s) {
 			}
 		}
 		if ((!rxfound)){ // && (loggers.size() < 2)) {
+			cout << "Creating Logger - TG: " << address << "\t Freq: " << retfreq << "\tCmd: " <<command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << endl;
 			log_dsd_sptr log = make_log_dsd( retfreq, center_freq,address);
 			//log_p25_sptr log = make_log_p25( retfreq, center_freq,address);
 						
@@ -193,7 +194,8 @@ float parse_message(string s) {
 			tb->connect(src, 0, log, 0);
 			log->unmute();
 			tb->unlock();
-			cout << "Creating Logger - TG: " << address << "\t Freq: " << retfreq << "\tCmd: " <<command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << endl;
+			cout << "Created logger & unlocked" << endl;
+
 		}
 		
 		cout << "TG: " << address << "\tFreq: " << retfreq << "\tActive Loggers: " << loggers.size() << "\tCmd: "<< command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << "\t Timeout: " << timeout << "\t Elapsed: " << elapsed << endl;
