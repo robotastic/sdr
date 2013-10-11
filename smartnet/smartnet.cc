@@ -92,6 +92,7 @@ using namespace std;
 
 
 int lastcmd = 0;
+int thread_num=0;
 double center_freq;
 
 gr_top_block_sptr tb;
@@ -101,11 +102,11 @@ vector<log_dsd_sptr> active_loggers;
 
 
 void init_loggers(int num, float center_freq) {
-	for (int i = 0; i < num; i++) {
+/*	for (int i = 0; i < num; i++) {
 		log_dsd_sptr log = make_log_dsd( center_freq, center_freq, 0, i);			
 		loggers.push_back(log);
  	}
-
+*/
 }
 
 float getfreq(int cmd) {
@@ -193,14 +194,16 @@ float parse_message(string s) {
 		if ((!rxfound)){ 
 			cout << "smartnet.cc: Activating Logger - TG: " << address << "\t Freq: " << retfreq << "\tCmd: " <<command << "\t LastCmd: " <<lastcmd << "\t  Flag: "<< groupflag << endl;
 
-			log_dsd_sptr log = loggers.front();
+			/*log_dsd_sptr log = loggers.front();
 			active_loggers.push_back(move(log));
-			loggers.erase(loggers.begin());
+			loggers.erase(loggers.begin());*/
 			cout << "smartnet.cc: Moved Logger, Loggers " << loggers.size() << " Active Loggers " << active_loggers.size() << endl;
 			
 						
 			
 			tb->lock();
+			log_dsd_sptr log = make_log_dsd( center_freq, center_freq, 0, thread_num++);			
+			active_loggers.push_back(log);
 			tb->connect(src, 0, log, 0);
 			log->activate(retfreq, address);
 			tb->unlock();
@@ -225,7 +228,7 @@ float parse_message(string s) {
 						
 			
 			
-			loggers.push_back(move(rx));
+			//loggers.push_back(move(rx));
 			it = active_loggers.erase(it);
 			
 			cout << "smartnet.cc: Moved Active Logger, Loggers " << loggers.size() << " Active Loggers " << active_loggers.size() << endl;
